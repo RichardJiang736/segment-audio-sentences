@@ -49,4 +49,4 @@ prompt
 server.logvenv
 
 # venv
-venv
+venv/

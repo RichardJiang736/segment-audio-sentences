@@ -1,6 +1,6 @@
 <p align="center">
     <picture>
-        <img src="./public/logo.svg" width="40%">
+        <img src="./public/logo.png" width="40%">
     </picture>
 </p>
 <p align="center">
@@ -10,7 +10,6 @@
     <br>
 </p>
 
-<h1 align="center">DiarisatorAI</h1>
 <h1 align="center">彝族语言与文化保护的声音分离工具</h1>
 
 🌏 **缘起：从一次前往凉山彝族自治州的旅程**

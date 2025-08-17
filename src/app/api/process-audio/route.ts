@@ -6,6 +6,16 @@ import { promisify } from 'util'
 
 const execAsync = promisify(exec)
 
+export const maxDuration = 300;
+export const config = {
+  maxBodySize: 52488000,  // 500MB in bytes
+  api : {
+    bodyParser: {
+      sizeLimit: '500mb'
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()

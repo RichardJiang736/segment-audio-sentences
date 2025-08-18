@@ -3,18 +3,19 @@ import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { exec } from 'child_process'
 import { promisify } from 'util'
+import { put } from '@vercel/blob'
 
 const execAsync = promisify(exec)
 
 export const maxDuration = 300;
 export const config = {
-  maxBodySize: 52488000,  // 500MB in bytes
-  api : {
+  maxBodySize: 524288000,
+  api: {
     bodyParser: {
       sizeLimit: '500mb'
     }
   }
-}
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,28 +27,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '没有选择音频文件' }, { status: 400 })
     }
 
-    // Create output directory if it doesn't exist
-    const outputPath = join(process.cwd(), 'public', outputFolder)
-    try {
-      await mkdir(outputPath, { recursive: true })
-    } catch (error) {
-      // Directory already exists
-    }
-
+    // For Vercel deployment, use blob storage
     const results = []
 
     for (const audioFile of audioFiles) {
-      const fileBuffer = Buffer.from(await audioFile.arrayBuffer())
-      const fileName = audioFile.name
-      const filePath = join(outputPath, fileName)
-
-      // Save the audio file
-      await writeFile(filePath, fileBuffer)
+      // Upload to Vercel Blob
+      const blob = await put(audioFile.name, audioFile, {
+        access: 'public',
+      });
+      
+      // Now process the file from the blob URL
+      // You'll need to modify your Python script to handle URLs instead of local files
+      const fileUrl = blob.url
+      
+      // Create output directory if it doesn't exist
+      const outputPath = join(process.cwd(), 'public', outputFolder)
+      try {
+        await mkdir(outputPath, { recursive: true })
+      } catch (error) {
+        // Directory already exists
+      }
 
       // Process the audio file with Python script
       try {
         const pythonScriptPath = join(process.cwd(), 'main.py')
-        const { stdout } = await execAsync(`python ${pythonScriptPath} "${outputPath}" "${outputPath}"`)
+        // Pass the URL instead of local file path
+        const { stdout } = await execAsync(`python ${pythonScriptPath} "${fileUrl}" "${outputPath}"`)
         
         // Parse the JSON output from Python script
         const pythonResult = JSON.parse(stdout)
@@ -56,8 +61,8 @@ export async function POST(request: NextRequest) {
           // Add all file results, not just the first one
           for (const fileResult of pythonResult.files) {
             results.push({
-              id: fileResult.id || fileName.replace(/\.[^/.]+$/, ""),
-              name: fileResult.name || fileName,
+              id: fileResult.id || audioFile.name.replace(/\.[^/.]+$/, ""),
+              name: fileResult.name || audioFile.name,
               segments: fileResult.segments || [],
               status: fileResult.status || 'Completed',
               progress: fileResult.progress || 100
@@ -66,8 +71,8 @@ export async function POST(request: NextRequest) {
         } else {
           // If no segments found, create a basic result
           results.push({
-            id: fileName.replace(/\.[^/.]+$/, ""),
-            name: fileName,
+            id: audioFile.name.replace(/\.[^/.]+$/, ""),
+            name: audioFile.name,
             segments: [],
             status: 'Completed',
             progress: 100
@@ -77,8 +82,8 @@ export async function POST(request: NextRequest) {
         console.error('Python script error:', pythonError)
         // Create a fallback result if Python script fails
         results.push({
-          id: fileName.replace(/\.[^/.]+$/, ""),
-          name: fileName,
+          id: audioFile.name.replace(/\.[^/.]+$/, ""),
+          name: audioFile.name,
           segments: [],
           status: 'Error',
           progress: 0

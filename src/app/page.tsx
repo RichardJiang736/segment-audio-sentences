@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Textarea } from '@/components/ui/textarea'
 import { Upload, Play, Pause, Loader2, Download } from 'lucide-react'
 import WaveformVisualizer from '@/components/WaveformVisualizer'
-import DirectBlobUpload from '@/components/DirectBlobUpload'
+import ReliableUpload from '@/components/ReliableUpload'
 import { jsPDF } from 'jspdf'
 import PizZip from 'pizzip'
 
@@ -49,33 +49,6 @@ export default function Home() {
   const [processedFiles, setProcessedFiles] = useState<ProcessedFile[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || [])
-    const newAudioFiles: AudioFile[] = files.map((file, index) => ({
-      id: `file-${Date.now()}-${index}`,
-      name: file.name,
-      file
-    }))
-    setAudioFiles(prev => [...prev, ...newAudioFiles])
-    
-    // Initialize processed files
-    const newProcessedFiles: ProcessedFile[] = newAudioFiles.map(af => ({
-      id: af.id,
-      name: af.name,
-      segments: [],
-      status: 'Pending',
-      progress: 0,
-      yiTranscription: '',
-      chineseTranslation: ''
-    }))
-    setProcessedFiles(prev => [...prev, ...newProcessedFiles])
-  }
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click()
-  }
 
   // Handle files uploaded via BlobUpload component
   const handleBlobUploadComplete = (uploadedFiles: AudioFile[]) => {
@@ -99,191 +72,112 @@ export default function Home() {
     setError(errorMessage)
   }
 
-  // Process uploaded files (from Blob storage)
-  const processUploadedFiles = async () => {
-    if (audioFiles.length === 0) {
-      setError('请选择至少一个音频文件')
-      return
-    }
-
-    setIsProcessing(true)
-    setError(null)
-
-    try {
-      console.log('发送请求到 /api/process-audio (uploaded files)') // Debug log
-      
-      const response = await fetch('/api/process-audio', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          uploadedFiles: audioFiles,
-          outputFolder: outputFolder
-        })
-      })
-
-      console.log('响应状态:', response.status) // Debug log
-
-      if (!response.ok) {
-        let errorMessage = '处理音频文件失败'
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.error || errorMessage
-          console.error('API 错误:', errorData) // Debug log
-        } catch (parseError) {
-          console.error('解析错误响应失败:', parseError) // Debug log
-        }
-        throw new Error(errorMessage)
-      }
-
-      const result = await response.json()
-      console.log('API 响应:', result) // Debug log
-      
-      // Update processed files with results
-      if (result.files && result.files.length > 0) {
-        const updatedFiles = result.files.map((file: any) => ({
-          id: file.id,
-          name: file.name,
-          segments: file.segments || [],
-          status: file.status || 'Completed',
-          progress: file.progress || 100,
-          yiTranscription: '',
-          chineseTranslation: ''
-        }));
-        console.log('更新后的文件:', updatedFiles) // Debug log
-        setProcessedFiles(prevFiles => {
-          console.log('设置处理文件，之前:', prevFiles, '新的:', updatedFiles) // Debug log
-          return updatedFiles
-        });
-      } else {
-        // If no files in result, update status of existing files to show completion
-        setProcessedFiles(prev => 
-          prev.map(pf => ({
-            ...pf,
-            status: 'Completed',
-            progress: 100,
-            yiTranscription: pf.yiTranscription || '',
-            chineseTranslation: pf.chineseTranslation || ''
-          }))
-        );
-      }
-    } catch (err) {
-      console.error('处理错误:', err) // Debug log
-      const errorMessage = err instanceof Error ? err.message : '发生错误'
-      setError(errorMessage)
-      // Update file status to show error but don't reset the page
-      setProcessedFiles(prev => 
-        prev.map(pf => ({
-          ...pf,
-          status: 'Error',
-          progress: 0,
-          yiTranscription: pf.yiTranscription || '',
-          chineseTranslation: pf.chineseTranslation || ''
-        }))
-      );
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  // Process traditional form files (fallback for smaller files)
-  const processFormFiles = async () => {
-    if (audioFiles.length === 0) {
-      setError('请选择至少一个音频文件')
-      return
-    }
-
-    setIsProcessing(true)
-    setError(null)
-
-    try {
-      const formData = new FormData()
-      audioFiles.forEach(af => {
-        formData.append('audioFiles', af.file)
-      })
-      formData.append('outputFolder', outputFolder)
-
-      console.log('发送请求到 /api/process-audio (form files)') // Debug log
-      
-      const response = await fetch('/api/process-audio', {
-        method: 'POST',
-        body: formData
-      })
-
-      console.log('响应状态:', response.status) // Debug log
-
-      if (!response.ok) {
-        let errorMessage = '处理音频文件失败'
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.error || errorMessage
-          console.error('API 错误:', errorData) // Debug log
-        } catch (parseError) {
-          console.error('解析错误响应失败:', parseError) // Debug log
-        }
-        throw new Error(errorMessage)
-      }
-
-      const result = await response.json()
-      console.log('API 响应:', result) // Debug log
-      
-      // Update processed files with results
-      if (result.files && result.files.length > 0) {
-        const updatedFiles = result.files.map((file: any) => ({
-          id: file.id,
-          name: file.name,
-          segments: file.segments || [],
-          status: file.status || 'Completed',
-          progress: file.progress || 100,
-          yiTranscription: '',
-          chineseTranslation: ''
-        }));
-        console.log('更新后的文件:', updatedFiles) // Debug log
-        setProcessedFiles(prevFiles => {
-          console.log('设置处理文件，之前:', prevFiles, '新的:', updatedFiles) // Debug log
-          return updatedFiles
-        });
-      } else {
-        // If no files in result, update status of existing files to show completion
-        setProcessedFiles(prev => 
-          prev.map(pf => ({
-            ...pf,
-            status: 'Completed',
-            progress: 100,
-            yiTranscription: pf.yiTranscription || '',
-            chineseTranslation: pf.chineseTranslation || ''
-          }))
-        );
-      }
-    } catch (err) {
-      console.error('处理错误:', err) // Debug log
-      const errorMessage = err instanceof Error ? err.message : '发生错误'
-      setError(errorMessage)
-      // Update file status to show error but don't reset the page
-      setProcessedFiles(prev => 
-        prev.map(pf => ({
-          ...pf,
-          status: 'Error',
-          progress: 0,
-          yiTranscription: pf.yiTranscription || '',
-          chineseTranslation: pf.chineseTranslation || ''
-        }))
-      );
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  // Main process function - decides which method to use
+  // Main process function - handles both traditional and blob uploads
   const processAudioFiles = async () => {
-    // Check if files are already uploaded to Blob storage
-    const hasBlobFiles = audioFiles.some(af => af.url && af.status === 'uploaded')
-    
-    if (hasBlobFiles) {
-      await processUploadedFiles()
-    } else {
-      await processFormFiles()
+    if (audioFiles.length === 0) {
+      setError('请选择至少一个音频文件')
+      return
+    }
+
+    setIsProcessing(true)
+    setError(null)
+
+    try {
+      console.log('发送请求到 /api/process-audio') // Debug log
+      
+      // Check if files have URLs (Blob uploads) or are File objects (traditional uploads)
+      const hasBlobFiles = audioFiles.some(af => af.url)
+      
+      let response;
+      if (hasBlobFiles) {
+        // Send as JSON for Blob files
+        response = await fetch('/api/process-audio', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            uploadedFiles: audioFiles,
+            outputFolder: outputFolder
+          })
+        })
+      } else {
+        // Send as FormData for traditional files
+        const formData = new FormData()
+        audioFiles.forEach(af => {
+          if (af.file) {
+            formData.append('audioFiles', af.file)
+          }
+        })
+        formData.append('outputFolder', outputFolder)
+        
+        response = await fetch('/api/process-audio', {
+          method: 'POST',
+          body: formData
+        })
+      }
+
+      console.log('响应状态:', response.status) // Debug log
+
+      if (!response.ok) {
+        let errorMessage = '处理音频文件失败'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+          console.error('API 错误:', errorData) // Debug log
+        } catch (parseError) {
+          console.error('解析错误响应失败:', parseError) // Debug log
+        }
+        throw new Error(errorMessage)
+      }
+
+      const result = await response.json()
+      console.log('API 响应:', result) // Debug log
+      
+      // Update processed files with results
+      if (result.files && result.files.length > 0) {
+        const updatedFiles = result.files.map((file: any) => ({
+          id: file.id,
+          name: file.name,
+          segments: file.segments || [],
+          status: file.status || 'Completed',
+          progress: file.progress || 100,
+          yiTranscription: '',
+          chineseTranslation: ''
+        }));
+        console.log('更新后的文件:', updatedFiles) // Debug log
+        setProcessedFiles(prevFiles => {
+          console.log('设置处理文件，之前:', prevFiles, '新的:', updatedFiles) // Debug log
+          return updatedFiles
+        });
+      } else {
+        // If no files in result, update status of existing files to show completion
+        setProcessedFiles(prev => 
+          prev.map(pf => ({
+            ...pf,
+            status: 'Completed',
+            progress: 100,
+            yiTranscription: pf.yiTranscription || '',
+            chineseTranslation: pf.chineseTranslation || ''
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('处理错误:', err) // Debug log
+      const errorMessage = err instanceof Error ? err.message : '发生错误'
+      setError(errorMessage)
+      // Update file status to show error but don't reset the page
+      setProcessedFiles(prev => 
+        prev.map(pf => ({
+          ...pf,
+          status: 'Error',
+          progress: 0,
+          yiTranscription: pf.yiTranscription || '',
+          chineseTranslation: pf.chineseTranslation || ''
+        }))
+      );
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -473,89 +367,10 @@ export default function Home() {
           </div>
 
         {/* Upload Section */}
-        <DirectBlobUpload 
+        <ReliableUpload 
           onUploadComplete={handleBlobUploadComplete}
           onUploadError={handleBlobUploadError}
         />
-
-        {/* Traditional Upload Section (fallback) */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl md:text-2xl">传统上传 (小文件)</CardTitle>
-            <CardDescription className="text-sm md:text-base">
-              对于小文件 (小于 25MB)，可以使用传统上传方式
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="outputFolder" className="text-sm font-medium">输出文件夹</Label>
-              <Input
-                id="outputFolder"
-                value={outputFolder}
-                onChange={(e) => setOutputFolder(e.target.value)}
-                placeholder="./output"
-                className="text-sm"
-              />
-            </div>
-
-            <div
-              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 md:p-8 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
-              onClick={handleUploadClick}
-            >
-              <Upload className="mx-auto h-10 w-10 md:h-12 md:w-12 text-muted-foreground mb-3 md:mb-4" />
-              <p className="text-base md:text-lg font-medium mb-1 md:mb-2">
-                拖放音频文件到此处或点击选择
-              </p>
-              <p className="text-xs md:text-sm text-muted-foreground">
-                支持 WAV, MP3, FLAC, M4A, AAC (最大 25MB)
-              </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".wav,.mp3,.flac,.m4a,.aac"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-            </div>
-
-            {audioFiles.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">已选择的文件:</Label>
-                <div className="space-y-2 max-h-32 md:max-h-40 overflow-y-auto">
-                  {audioFiles.map((af) => (
-                    <div key={af.id} className="flex items-center justify-between p-2 md:p-3 bg-muted rounded">
-                      <span className="text-xs md:text-sm truncate flex-1 mr-2">{af.name}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFile(af.id)}
-                        className="text-xs md:text-sm px-2 py-1 h-auto"
-                      >
-                        移除
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <Button
-              onClick={processAudioFiles}
-              disabled={isProcessing || audioFiles.length === 0}
-              className="w-full text-sm md:text-base py-2 md:py-3"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  处理中...
-                </>
-              ) : (
-                '处理音频文件'
-              )}
-            </Button>
-          </CardContent>
-        </Card>
 
         {/* Error Display */}
         {error && (

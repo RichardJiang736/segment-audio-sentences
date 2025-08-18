@@ -48,5 +48,6 @@ prompt
 
 server.logvenv
 
-# venv
+# packages
 venv/
+node_modules/

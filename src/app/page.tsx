@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Textarea } from '@/components/ui/textarea'
 import { Upload, Play, Pause, Loader2, Download } from 'lucide-react'
 import WaveformVisualizer from '@/components/WaveformVisualizer'
+import BlobUpload from '@/components/BlobUpload'
 import { jsPDF } from 'jspdf'
 import PizZip from 'pizzip'
 
@@ -18,6 +19,9 @@ interface AudioFile {
   id: string
   name: string
   file: File
+  url?: string
+  status?: 'pending' | 'uploading' | 'uploaded' | 'error'
+  progress?: number
 }
 
 interface Segment {
@@ -73,7 +77,118 @@ export default function Home() {
     fileInputRef.current?.click()
   }
 
-  const processAudioFiles = async () => {
+  // Handle files uploaded via BlobUpload component
+  const handleBlobUploadComplete = (uploadedFiles: AudioFile[]) => {
+    setAudioFiles(uploadedFiles)
+    
+    // Initialize processed files
+    const newProcessedFiles: ProcessedFile[] = uploadedFiles.map(af => ({
+      id: af.id,
+      name: af.name,
+      segments: [],
+      status: 'Pending',
+      progress: 0,
+      yiTranscription: '',
+      chineseTranslation: ''
+    }))
+    setProcessedFiles(prev => [...prev, ...newProcessedFiles])
+  }
+
+  // Handle errors from BlobUpload component
+  const handleBlobUploadError = (errorMessage: string) => {
+    setError(errorMessage)
+  }
+
+  // Process uploaded files (from Blob storage)
+  const processUploadedFiles = async () => {
+    if (audioFiles.length === 0) {
+      setError('请选择至少一个音频文件')
+      return
+    }
+
+    setIsProcessing(true)
+    setError(null)
+
+    try {
+      console.log('发送请求到 /api/process-audio (uploaded files)') // Debug log
+      
+      const response = await fetch('/api/process-audio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          uploadedFiles: audioFiles,
+          outputFolder: outputFolder
+        })
+      })
+
+      console.log('响应状态:', response.status) // Debug log
+
+      if (!response.ok) {
+        let errorMessage = '处理音频文件失败'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+          console.error('API 错误:', errorData) // Debug log
+        } catch (parseError) {
+          console.error('解析错误响应失败:', parseError) // Debug log
+        }
+        throw new Error(errorMessage)
+      }
+
+      const result = await response.json()
+      console.log('API 响应:', result) // Debug log
+      
+      // Update processed files with results
+      if (result.files && result.files.length > 0) {
+        const updatedFiles = result.files.map((file: any) => ({
+          id: file.id,
+          name: file.name,
+          segments: file.segments || [],
+          status: file.status || 'Completed',
+          progress: file.progress || 100,
+          yiTranscription: '',
+          chineseTranslation: ''
+        }));
+        console.log('更新后的文件:', updatedFiles) // Debug log
+        setProcessedFiles(prevFiles => {
+          console.log('设置处理文件，之前:', prevFiles, '新的:', updatedFiles) // Debug log
+          return updatedFiles
+        });
+      } else {
+        // If no files in result, update status of existing files to show completion
+        setProcessedFiles(prev => 
+          prev.map(pf => ({
+            ...pf,
+            status: 'Completed',
+            progress: 100,
+            yiTranscription: pf.yiTranscription || '',
+            chineseTranslation: pf.chineseTranslation || ''
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('处理错误:', err) // Debug log
+      const errorMessage = err instanceof Error ? err.message : '发生错误'
+      setError(errorMessage)
+      // Update file status to show error but don't reset the page
+      setProcessedFiles(prev => 
+        prev.map(pf => ({
+          ...pf,
+          status: 'Error',
+          progress: 0,
+          yiTranscription: pf.yiTranscription || '',
+          chineseTranslation: pf.chineseTranslation || ''
+        }))
+      );
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Process traditional form files (fallback for smaller files)
+  const processFormFiles = async () => {
     if (audioFiles.length === 0) {
       setError('请选择至少一个音频文件')
       return
@@ -89,7 +204,7 @@ export default function Home() {
       })
       formData.append('outputFolder', outputFolder)
 
-      console.log('发送请求到 /api/process-audio') // Debug log
+      console.log('发送请求到 /api/process-audio (form files)') // Debug log
       
       const response = await fetch('/api/process-audio', {
         method: 'POST',
@@ -157,6 +272,18 @@ export default function Home() {
       );
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  // Main process function - decides which method to use
+  const processAudioFiles = async () => {
+    // Check if files are already uploaded to Blob storage
+    const hasBlobFiles = audioFiles.some(af => af.url && af.status === 'uploaded')
+    
+    if (hasBlobFiles) {
+      await processUploadedFiles()
+    } else {
+      await processFormFiles()
     }
   }
 
@@ -341,16 +468,22 @@ export default function Home() {
           <div className="text-center space-y-2">
             <h1 className="text-3xl md:text-4xl font-bold">DiarisatorAI</h1>
             <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-              上传音频文件以分离句子和识别不同的说话人
+              上传音频文件以分离和识别不同的说话人
             </p>
           </div>
 
         {/* Upload Section */}
+        <BlobUpload 
+          onUploadComplete={handleBlobUploadComplete}
+          onUploadError={handleBlobUploadError}
+        />
+
+        {/* Traditional Upload Section (fallback) */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl md:text-2xl">上传音频文件</CardTitle>
+            <CardTitle className="text-xl md:text-2xl">传统上传 (小文件)</CardTitle>
             <CardDescription className="text-sm md:text-base">
-              选择 WAV, MP3, FLAC, M4A, 或 AAC 文件进行处理
+              对于小文件 (小于 25MB)，可以使用传统上传方式
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -374,7 +507,7 @@ export default function Home() {
                 拖放音频文件到此处或点击选择
               </p>
               <p className="text-xs md:text-sm text-muted-foreground">
-                支持 WAV, MP3, FLAC, M4A, AAC
+                支持 WAV, MP3, FLAC, M4A, AAC (最大 25MB)
               </p>
               <input
                 ref={fileInputRef}
@@ -466,7 +599,7 @@ export default function Home() {
                       <p className="text-muted-foreground text-sm">
                         {pf.status === 'Pending' ? '等待处理...' : 
                          pf.status === 'Processing' ? '处理中...' : 
-                         '在此音频文件中未检测到说话人分段。'}
+                         '此音频文件中未检测到说话人片段。'}
                       </p>
                     )}
                     

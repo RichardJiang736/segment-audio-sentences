@@ -14,7 +14,7 @@ interface AudioFile {
   name: string
   file: File
   url?: string
-  status: 'pending' | 'uploading' | 'uploaded' | 'error'
+  status: 'Pending' | 'Uploading' | 'Uploaded' | 'Error'
   progress: number
   error?: string
 }
@@ -35,7 +35,7 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
       id: `file-${Date.now()}-${index}`,
       name: file.name,
       file,
-      status: 'pending',
+      status: 'Pending',
       progress: 0
     }))
     setAudioFiles(prev => [...prev, ...newAudioFiles])
@@ -60,13 +60,13 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
 
     try {
       for (const audioFile of audioFiles) {
-        if (audioFile.status === 'uploaded') continue
+        if (audioFile.status === 'Uploaded') continue
 
         // Update file status to uploading
         setAudioFiles(prev => 
           prev.map(af => 
             af.id === audioFile.id 
-              ? { ...af, status: 'uploading', progress: 0 }
+              ? { ...af, status: 'Uploading', progress: 0 }
               : af
           )
         )
@@ -81,7 +81,7 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
           const uploadedFile = {
             ...audioFile,
             url: blob.url,
-            status: 'uploaded' as const,
+            status: 'Uploaded' as const,
             progress: 100
           }
           setAudioFiles(prev => 
@@ -98,7 +98,7 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
           setAudioFiles(prev => 
             prev.map(af => 
               af.id === audioFile.id 
-                ? { ...af, status: 'error', error: errorMessage }
+                ? { ...af, status: 'Error', error: errorMessage }
                 : af
             )
           )
@@ -171,23 +171,23 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
                 <div key={af.id} className="flex items-center justify-between p-2 md:p-3 bg-muted rounded">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className="flex-shrink-0">
-                      {af.status === 'pending' && <Upload className="h-4 w-4 text-muted-foreground" />}
-                      {af.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
-                      {af.status === 'uploaded' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                      {af.status === 'error' && <XCircle className="h-4 w-4 text-red-500" />}
+                      {af.status === 'Pending' && <Upload className="h-4 w-4 text-muted-foreground" />}
+                      {af.status === 'Uploading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+                      {af.status === 'Uploaded' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                      {af.status === 'Error' && <XCircle className="h-4 w-4 text-red-500" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs md:text-sm truncate">{af.name}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={af.status === 'uploaded' ? 'default' : 'secondary'} className="text-xs">
+                        <Badge variant={af.status === 'Uploaded' ? 'default' : 'secondary'} className="text-xs">
                           {af.status}
                         </Badge>
-                        {af.status === 'uploading' && (
+                        {af.status === 'Uploading' && (
                           <div className="flex-1">
                             <Progress value={af.progress} className="h-1" />
                           </div>
                         )}
-                        {af.status === 'error' && (
+                        {af.status === 'Error' && (
                           <p className="text-xs text-red-500 truncate">{af.error}</p>
                         )}
                       </div>
@@ -209,7 +209,7 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
 
         <Button
           onClick={uploadFiles}
-          disabled={isUploading || audioFiles.length === 0 || audioFiles.every(f => f.status === 'uploaded')}
+          disabled={isUploading || audioFiles.length === 0 || audioFiles.every(f => f.status === 'Uploaded')}
           className="w-full text-sm md:text-base py-2 md:py-3"
         >
           {isUploading ? (
@@ -222,7 +222,7 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
           )}
         </Button>
 
-        {audioFiles.some(f => f.status === 'error') && (
+        {audioFiles.some(f => f.status === 'Error') && (
           <Alert variant="destructive">
             <AlertDescription>
               Some files failed to upload. Please check the error messages and try again.

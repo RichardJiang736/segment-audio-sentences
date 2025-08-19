@@ -13,7 +13,7 @@ interface AudioFile {
   name: string
   file: File
   url?: string
-  status: 'pending' | 'uploading' | 'uploaded' | 'error'
+  status: 'Pending' | 'uploading' | 'Uploaded' | 'Error'
   progress: number
   error?: string
 }
@@ -35,7 +35,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
       id: `file-${Date.now()}-${index}`,
       name: file.name,
       file,
-      status: 'pending',
+      status: 'Pending',
       progress: 0
     }))
     setAudioFiles(prev => [...prev, ...newAudioFiles])
@@ -55,7 +55,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
     const uploadedFiles: AudioFile[] = []
     
     for (const audioFile of audioFiles) {
-      if (audioFile.status === 'uploaded') continue
+      if (audioFile.status === 'Uploaded') continue
       
       // Update file status to uploading
       setAudioFiles(prev => 
@@ -97,7 +97,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
         // Mark as successfully uploaded
         const uploadedFile = {
           ...audioFile,
-          status: 'uploaded' as const,
+          status: 'Uploaded' as const,
           progress: 100
         }
         setAudioFiles(prev => 
@@ -115,7 +115,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
         setAudioFiles(prev => 
           prev.map(af => 
             af.id === audioFile.id 
-              ? { ...af, status: 'error', error: errorMessage }
+              ? { ...af, status: 'Error', error: errorMessage }
               : af
           )
         )
@@ -129,7 +129,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
     const uploadedFiles: AudioFile[] = []
 
     for (const audioFile of audioFiles) {
-      if (audioFile.status === 'uploaded') continue
+      if (audioFile.status === 'Uploaded') continue
 
       // Update file status to uploading
       setAudioFiles(prev => 
@@ -180,7 +180,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
           const uploadedFile = {
             ...audioFile,
             url: publicUrl,
-            status: 'uploaded' as const,
+            status: 'Uploaded' as const,
             progress: 100
           }
           setAudioFiles(prev => 
@@ -212,7 +212,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
           const uploadedFile = {
             ...audioFile,
             url: blob.url,
-            status: 'uploaded' as const,
+            status: 'Uploaded' as const,
             progress: 100
           }
           setAudioFiles(prev => 
@@ -238,7 +238,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
         setAudioFiles(prev => 
           prev.map(af => 
             af.id === audioFile.id 
-              ? { ...af, status: 'error', error: helpfulMessage }
+              ? { ...af, status: 'Error', error: helpfulMessage }
               : af
           )
         )
@@ -265,7 +265,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
         uploadedFiles = await uploadFilesBlob()
       }
 
-      const successfulUploads = uploadedFiles.filter(f => f.status === 'uploaded')
+      const successfulUploads = uploadedFiles.filter(f => f.status === 'Uploaded')
       
       if (successfulUploads.length > 0) {
         onUploadComplete(successfulUploads)
@@ -378,15 +378,15 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
                 <div key={af.id} className="flex items-center justify-between p-2 md:p-3 bg-muted rounded">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className="flex-shrink-0">
-                      {af.status === 'pending' && <Upload className="h-4 w-4 text-muted-foreground" />}
+                      {af.status === 'Pending' && <Upload className="h-4 w-4 text-muted-foreground" />}
                       {af.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
-                      {af.status === 'uploaded' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                      {af.status === 'error' && <XCircle className="h-4 w-4 text-red-500" />}
+                      {af.status === 'Uploaded' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                      {af.status === 'Error' && <XCircle className="h-4 w-4 text-red-500" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs md:text-sm truncate">{af.name}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={af.status === 'uploaded' ? 'default' : 'secondary'} className="text-xs">
+                        <Badge variant={af.status === 'Uploaded' ? 'default' : 'secondary'} className="text-xs">
                           {af.status}
                         </Badge>
                         {af.status === 'uploading' && (
@@ -394,7 +394,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
                             <Progress value={af.progress} className="h-1" />
                           </div>
                         )}
-                        {af.status === 'error' && (
+                        {af.status === 'Error' && (
                           <p className="text-xs text-red-500 truncate">{af.error}</p>
                         )}
                       </div>
@@ -416,7 +416,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
 
         <Button
           onClick={uploadFiles}
-          disabled={isUploading || audioFiles.length === 0 || audioFiles.every(f => f.status === 'uploaded')}
+          disabled={isUploading || audioFiles.length === 0 || audioFiles.every(f => f.status === 'Uploaded')}
           className="w-full text-sm md:text-base py-2 md:py-3"
         >
           {isUploading ? (
@@ -429,11 +429,11 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
           )}
         </Button>
 
-        {audioFiles.some(f => f.status === 'error') && (
+        {audioFiles.some(f => f.status === 'Error') && (
           <Alert variant="destructive">
             <AlertDescription>
               <strong>Upload Errors Detected:</strong><br />
-              {audioFiles.filter(f => f.status === 'error').map(f => (
+              {audioFiles.filter(f => f.status === 'Error').map(f => (
                 <div key={f.id} className="mt-1">
                   • {f.name}: {f.error}
                 </div>

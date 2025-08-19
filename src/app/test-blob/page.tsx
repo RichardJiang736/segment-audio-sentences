@@ -13,7 +13,7 @@ interface TestFile {
   name: string
   file: File
   url?: string
-  status: 'pending' | 'uploading' | 'uploaded' | 'error'
+  status: 'Pending' | 'Uploading' | 'Uploaded' | 'Error'
   progress: number
   error?: string
 }
@@ -30,7 +30,7 @@ export default function TestBlobPage() {
       id: `file-${Date.now()}-${index}`,
       name: file.name,
       file,
-      status: 'pending',
+      status: 'Pending',
       progress: 0
     }))
     setFiles(prev => [...prev, ...newFiles])
@@ -48,13 +48,13 @@ export default function TestBlobPage() {
 
     try {
       for (const testFile of files) {
-        if (testFile.status === 'uploaded') continue
+        if (testFile.status === 'Uploaded') continue
 
         // Update file status to uploading
         setFiles(prev => 
           prev.map(f => 
             f.id === testFile.id 
-              ? { ...f, status: 'uploading', progress: 0 }
+              ? { ...f, status: 'Uploading', progress: 0 }
               : f
           )
         )
@@ -73,7 +73,7 @@ export default function TestBlobPage() {
           setFiles(prev => 
             prev.map(f => 
               f.id === testFile.id 
-                ? { ...f, url: blob.url, status: 'uploaded', progress: 100 }
+                ? { ...f, url: blob.url, status: 'Uploaded', progress: 100 }
                 : f
             )
           )
@@ -85,14 +85,14 @@ export default function TestBlobPage() {
           setFiles(prev => 
             prev.map(f => 
               f.id === testFile.id 
-                ? { ...f, status: 'error', error: errorMessage }
+                ? { ...f, status: 'Error', error: errorMessage }
                 : f
             )
           )
         }
       }
 
-      const uploadedCount = files.filter(f => f.status === 'uploaded').length
+      const uploadedCount = files.filter(f => f.status === 'Uploaded').length
       if (uploadedCount > 0) {
         setSuccess(`Successfully uploaded ${uploadedCount} file(s)`)
       } else {
@@ -152,27 +152,27 @@ export default function TestBlobPage() {
                     <div key={f.id} className="flex items-center justify-between p-2 bg-muted rounded">
                       <div className="flex items-center gap-2 flex-1">
                         <div className="flex-shrink-0">
-                          {f.status === 'pending' && <Upload className="h-4 w-4 text-muted-foreground" />}
-                          {f.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
-                          {f.status === 'uploaded' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                          {f.status === 'error' && <XCircle className="h-4 w-4 text-red-500" />}
+                          {f.status === 'Pending' && <Upload className="h-4 w-4 text-muted-foreground" />}
+                          {f.status === 'Uploading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+                          {f.status === 'Uploaded' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                          {f.status === 'Error' && <XCircle className="h-4 w-4 text-red-500" />}
                         </div>
                         <div className="flex-1">
                           <p className="text-sm truncate">{f.name}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <span className={`text-xs px-2 py-1 rounded ${
-                              f.status === 'uploaded' ? 'bg-green-100 text-green-800' :
-                              f.status === 'error' ? 'bg-red-100 text-red-800' :
+                              f.status === 'Uploaded' ? 'bg-green-100 text-green-800' :
+                              f.status === 'Error' ? 'bg-red-100 text-red-800' :
                               'bg-gray-100 text-gray-800'
                             }`}>
                               {f.status}
                             </span>
-                            {f.status === 'uploading' && (
+                            {f.status === 'Uploading' && (
                               <div className="flex-1">
                                 <Progress value={f.progress} className="h-1" />
                               </div>
                             )}
-                            {f.status === 'error' && (
+                            {f.status === 'Error' && (
                               <p className="text-xs text-red-500 truncate">{f.error}</p>
                             )}
                           </div>
@@ -187,7 +187,7 @@ export default function TestBlobPage() {
             <div className="flex gap-2">
               <Button
                 onClick={uploadFiles}
-                disabled={isUploading || files.length === 0 || files.every(f => f.status === 'uploaded')}
+                disabled={isUploading || files.length === 0 || files.every(f => f.status === 'Uploaded')}
                 className="flex-1"
               >
                 {isUploading ? (

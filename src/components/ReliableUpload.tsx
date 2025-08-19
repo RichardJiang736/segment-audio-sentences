@@ -50,14 +50,78 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
   }
 
   const uploadFilesTraditional = async () => {
-    // For traditional upload, we just mark files as ready for processing
-    const uploadedFiles = audioFiles.map(af => ({
-      ...af,
-      status: 'uploaded' as const,
-      progress: 100
-    }))
+    // For traditional upload, we need to actually validate the files
+    // and simulate upload progress for better user experience
+    const uploadedFiles: AudioFile[] = []
     
-    setAudioFiles(uploadedFiles)
+    for (const audioFile of audioFiles) {
+      if (audioFile.status === 'uploaded') continue
+      
+      // Update file status to uploading
+      setAudioFiles(prev => 
+        prev.map(af => 
+          af.id === audioFile.id 
+            ? { ...af, status: 'uploading', progress: 0 }
+            : af
+        )
+      )
+      
+      try {
+        // Simulate upload progress for better UX
+        const progressSteps = [10, 25, 50, 75, 90, 100]
+        for (const progress of progressSteps) {
+          await new Promise(resolve => setTimeout(resolve, 200))
+          setAudioFiles(prev => 
+            prev.map(af => 
+              af.id === audioFile.id 
+                ? { ...af, progress }
+                : af
+            )
+          )
+        }
+        
+        // Validate file size and format
+        if (audioFile.file.size === 0) {
+          throw new Error('File is empty')
+        }
+        
+        if (audioFile.file.size > 500 * 1024 * 1024) { // 500MB limit
+          throw new Error('File size exceeds 500MB limit. Please use Vercel Blob upload for large files.')
+        }
+        
+        const validTypes = ['audio/wav', 'audio/mp3', 'audio/flac', 'audio/m4a', 'audio/aac']
+        if (!validTypes.includes(audioFile.file.type) && !audioFile.name.match(/\.(wav|mp3|flac|m4a|aac)$/i)) {
+          throw new Error('Invalid file format. Please upload WAV, MP3, FLAC, M4A, or AAC files.')
+        }
+        
+        // Mark as successfully uploaded
+        const uploadedFile = {
+          ...audioFile,
+          status: 'uploaded' as const,
+          progress: 100
+        }
+        setAudioFiles(prev => 
+          prev.map(af => 
+            af.id === audioFile.id ? uploadedFile : af
+          )
+        )
+        uploadedFiles.push(uploadedFile)
+        
+      } catch (error) {
+        console.error('Traditional upload validation error:', error)
+        const errorMessage = error instanceof Error ? error.message : 'File validation failed'
+        
+        // Update file status to error
+        setAudioFiles(prev => 
+          prev.map(af => 
+            af.id === audioFile.id 
+              ? { ...af, status: 'error', error: errorMessage }
+              : af
+          )
+        )
+      }
+    }
+    
     return uploadedFiles
   }
 
@@ -79,39 +143,102 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
       try {
         console.log(`Uploading file to Blob: ${audioFile.name}`)
         
-        // Try to use dynamic import to avoid issues with @vercel/blob
-        const { put } = await import('@vercel/blob')
-        
-        // Upload file to Vercel Blob
-        const blob = await put(`uploads/${Date.now()}-${audioFile.name}`, audioFile.file, {
-          access: 'public',
-          contentType: audioFile.file.type || 'audio/wav',
+        // First try to get an upload URL from the server
+        // This avoids the client-side token issue
+        const uploadResponse = await fetch('/api/generate-upload-url', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileName: audioFile.name,
+            contentType: audioFile.file.type || 'audio/wav',
+            size: audioFile.file.size
+          })
         })
 
-        console.log(`Blob upload successful: ${blob.url}`)
+        if (uploadResponse.ok) {
+          // Use server-provided upload URL
+          const { uploadUrl, publicUrl } = await uploadResponse.json()
+          
+          // Upload directly to the provided URL
+          const uploadResult = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': audioFile.file.type || 'audio/wav',
+            },
+            body: audioFile.file
+          })
 
-        // Update file status to uploaded
-        const uploadedFile = {
-          ...audioFile,
-          url: blob.url,
-          status: 'uploaded' as const,
-          progress: 100
-        }
-        setAudioFiles(prev => 
-          prev.map(af => 
-            af.id === audioFile.id ? uploadedFile : af
+          if (!uploadResult.ok) {
+            throw new Error(`Upload failed with status ${uploadResult.status}`)
+          }
+
+          console.log(`Blob upload successful: ${publicUrl}`)
+
+          // Update file status to uploaded
+          const uploadedFile = {
+            ...audioFile,
+            url: publicUrl,
+            status: 'uploaded' as const,
+            progress: 100
+          }
+          setAudioFiles(prev => 
+            prev.map(af => 
+              af.id === audioFile.id ? uploadedFile : af
+            )
           )
-        )
-        uploadedFiles.push(uploadedFile)
+          uploadedFiles.push(uploadedFile)
+        } else {
+          // Fallback to client-side upload with better error handling
+          console.log('Server upload URL failed, trying client-side upload...')
+          
+          // Try to use dynamic import to avoid issues with @vercel/blob
+          const { put } = await import('@vercel/blob')
+          
+          // Explicitly pass token option if available
+          const token = process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || undefined
+          
+          // Upload file to Vercel Blob
+          const blob = await put(`uploads/${Date.now()}-${audioFile.name}`, audioFile.file, {
+            access: 'public',
+            contentType: audioFile.file.type || 'audio/wav',
+            token: token // Explicitly pass token
+          })
+
+          console.log(`Blob upload successful: ${blob.url}`)
+
+          // Update file status to uploaded
+          const uploadedFile = {
+            ...audioFile,
+            url: blob.url,
+            status: 'uploaded' as const,
+            progress: 100
+          }
+          setAudioFiles(prev => 
+            prev.map(af => 
+              af.id === audioFile.id ? uploadedFile : af
+            )
+          )
+          uploadedFiles.push(uploadedFile)
+        }
       } catch (error) {
         console.error('Blob upload error:', error)
         const errorMessage = error instanceof Error ? error.message : 'Blob upload failed'
+        
+        // Provide more helpful error message
+        let helpfulMessage = errorMessage
+        if (errorMessage.includes('No token found')) {
+          helpfulMessage = 'Vercel Blob token not found. Please ensure BLOB_READ_WRITE_TOKEN is configured in your Vercel environment variables, or use Traditional Upload method.'
+        } else if (errorMessage.includes('Failed to retrieve the client token')) {
+          helpfulMessage = 'Vercel Blob authentication failed. This is a known issue in some Vercel environments. Please use Traditional Upload method instead.'
+        }
         
         // Update file status to error
         setAudioFiles(prev => 
           prev.map(af => 
             af.id === audioFile.id 
-              ? { ...af, status: 'error', error: errorMessage }
+              ? { ...af, status: 'error', error: helpfulMessage }
               : af
           )
         )
@@ -196,8 +323,18 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
         {uploadMethod === 'blob' && (
           <Alert>
             <AlertDescription>
-              Vercel Blob upload may not work in some environments. If you encounter issues, 
+              <strong>Vercel Blob Upload Notice:</strong> This method is designed for large files (over 25MB) 
+              but may encounter authentication issues in some Vercel environments. If you see token errors, 
               please switch to Traditional Upload method.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {uploadMethod === 'traditional' && (
+          <Alert>
+            <AlertDescription>
+              <strong>Traditional Upload:</strong> This method works reliably in all environments 
+              but has a 500MB file size limit. For files larger than 500MB, please use Vercel Blob upload.
             </AlertDescription>
           </Alert>
         )}
@@ -295,8 +432,17 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
         {audioFiles.some(f => f.status === 'error') && (
           <Alert variant="destructive">
             <AlertDescription>
-              Some files failed to upload. Please check the error messages and try again, 
-              or switch to Traditional Upload method.
+              <strong>Upload Errors Detected:</strong><br />
+              {audioFiles.filter(f => f.status === 'error').map(f => (
+                <div key={f.id} className="mt-1">
+                  • {f.name}: {f.error}
+                </div>
+              ))}
+              <br />
+              <strong>Solutions:</strong><br />
+              • For token errors: Use Traditional Upload method<br />
+              • For file size errors: Use Vercel Blob upload for files over 500MB<br />
+              • For format errors: Upload only WAV, MP3, FLAC, M4A, or AAC files
             </AlertDescription>
           </Alert>
         )}

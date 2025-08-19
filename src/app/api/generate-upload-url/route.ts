@@ -4,17 +4,17 @@ import { put } from '@vercel/blob'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { filename, contentType } = body
+    const { fileName, contentType, size } = body
 
-    if (!filename || !contentType) {
+    if (!fileName || !contentType) {
       return NextResponse.json(
-        { error: 'Missing filename or contentType' },
+        { error: 'Missing fileName or contentType' },
         { status: 400 }
       )
     }
 
     // Generate a unique pathname for the blob
-    const pathname = `uploads/${Date.now()}-${filename}`
+    const pathname = `uploads/${Date.now()}-${fileName}`
 
     try {
       // Use the Vercel Blob SDK to generate an upload URL
@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         uploadUrl: blob.url,
+        publicUrl: blob.downloadUrl,
         pathname: blob.pathname,
         downloadUrl: blob.downloadUrl,
       })
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
         
         return NextResponse.json({
           uploadUrl: blobData.url,
+          publicUrl: blobData.downloadUrl,
           pathname: blobData.pathname,
           downloadUrl: blobData.downloadUrl,
         })

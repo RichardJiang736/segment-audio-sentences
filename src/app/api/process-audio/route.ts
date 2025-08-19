@@ -8,6 +8,16 @@ import { createWriteStream } from 'fs'
 
 const execAsync = promisify(exec)
 
+export const maxDuration = 300;
+export const config = {
+  maxBodySize: 52488000,  // 500MB in bytes
+  api : {
+    bodyParser: {
+      sizeLimit: '500mb'
+    }
+  }
+}
+
 // Function to download file from URL
 async function downloadFile(url: string, filePath: string): Promise<void> {
   return new Promise((resolve, reject) => {

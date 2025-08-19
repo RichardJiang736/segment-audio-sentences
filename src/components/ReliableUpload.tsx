@@ -13,7 +13,7 @@ interface AudioFile {
   name: string
   file: File
   url?: string
-  status: 'Pending' | 'uploading' | 'Uploaded' | 'Error'
+  status: 'Pending' | 'Uploading' | 'Uploaded' | 'Error'
   progress: number
   error?: string
 }
@@ -61,7 +61,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
       setAudioFiles(prev => 
         prev.map(af => 
           af.id === audioFile.id 
-            ? { ...af, status: 'uploading', progress: 0 }
+            ? { ...af, status: 'Uploading', progress: 0 }
             : af
         )
       )
@@ -135,7 +135,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
       setAudioFiles(prev => 
         prev.map(af => 
           af.id === audioFile.id 
-            ? { ...af, status: 'uploading', progress: 0 }
+            ? { ...af, status: 'Uploading', progress: 0 }
             : af
         )
       )
@@ -379,7 +379,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className="flex-shrink-0">
                       {af.status === 'Pending' && <Upload className="h-4 w-4 text-muted-foreground" />}
-                      {af.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+                      {af.status === 'Uploading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
                       {af.status === 'Uploaded' && <CheckCircle className="h-4 w-4 text-green-500" />}
                       {af.status === 'Error' && <XCircle className="h-4 w-4 text-red-500" />}
                     </div>
@@ -389,7 +389,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
                         <Badge variant={af.status === 'Uploaded' ? 'default' : 'secondary'} className="text-xs">
                           {af.status}
                         </Badge>
-                        {af.status === 'uploading' && (
+                        {af.status === 'Uploading' && (
                           <div className="flex-1">
                             <Progress value={af.progress} className="h-1" />
                           </div>

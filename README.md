@@ -63,7 +63,7 @@
 - **前端**：Next.js, React, TypeScript, Tailwind CSS
 - **后端**：Node.js, Python
 - **数据库**：Prisma, SQLite
-- **AI模型**：[具体模型名称，如SpeechBrain, PyAnnote等]
+- **AI模型**：PyAnnote.audio
 
 * **项目链接**
 

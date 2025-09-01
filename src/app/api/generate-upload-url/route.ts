@@ -13,6 +13,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if BLOB_READ_WRITE_TOKEN is configured
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      console.error('BLOB_READ_WRITE_TOKEN not found in environment variables')
+      return NextResponse.json(
+        { 
+          error: 'Vercel Blob token not found. Please ensure BLOB_READ_WRITE_TOKEN is configured in your Vercel environment variables, or use Traditional Upload method.',
+          recommendation: 'Use Traditional Upload method for reliable file uploads in all environments.'
+        },
+        { status: 500 }
+      )
+    }
+
+    // Validate file size - recommend Traditional upload for files under 500MB
+    if (size && size < 500 * 1024 * 1024) {
+      return NextResponse.json(
+        { 
+          error: 'File size is under 500MB. For better reliability with smaller files, please use Traditional Upload method.',
+          recommendation: 'Use Vercel Blob upload only for files over 500MB.'
+        },
+        { status: 400 }
+      )
+    }
+
     // Generate a unique pathname for the blob
     const pathname = `uploads/${Date.now()}-${fileName}`
 
@@ -51,8 +74,18 @@ export async function POST(request: NextRequest) {
         if (!blobResponse.ok) {
           const errorText = await blobResponse.text()
           console.error('Blob REST API failed:', errorText)
+          
+          // Provide more helpful error message based on the error
+          let helpfulMessage = 'Failed to generate upload URL using both SDK and REST API'
+          if (errorText.includes('Unauthorized') || errorText.includes('Invalid token')) {
+            helpfulMessage = 'Vercel Blob authentication failed. Please ensure BLOB_READ_WRITE_TOKEN is properly configured, or use Traditional Upload method.'
+          }
+          
           return NextResponse.json(
-            { error: 'Failed to generate upload URL using both SDK and REST API' },
+            { 
+              error: helpfulMessage,
+              recommendation: 'Use Traditional Upload method for reliable file uploads in all environments.'
+            },
             { status: 500 }
           )
         }
@@ -68,7 +101,10 @@ export async function POST(request: NextRequest) {
       } catch (restError) {
         console.error('REST API fallback failed:', restError)
         return NextResponse.json(
-          { error: 'Both SDK and REST API methods failed' },
+          { 
+            error: 'Vercel Blob authentication failed. This is a known issue in some Vercel environments. Please use Traditional Upload method instead.',
+            recommendation: 'Use Traditional Upload method for reliable file uploads in all environments.'
+          },
           { status: 500 }
         )
       }
@@ -76,7 +112,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Generate upload URL error:', error)
     return NextResponse.json(
-      { error: 'Failed to generate upload URL' },
+      { 
+        error: 'Failed to generate upload URL. Please use Traditional Upload method.',
+        recommendation: 'Use Traditional Upload method for reliable file uploads in all environments.'
+      },
       { status: 500 }
     )
   }

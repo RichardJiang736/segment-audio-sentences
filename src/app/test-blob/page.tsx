@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -23,6 +23,22 @@ export default function TestBlobPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [tokenStatus, setTokenStatus] = useState<{ hasToken: boolean; message: string } | null>(null)
+
+  // Check token status on component mount
+  useEffect(() => {
+    const checkTokenStatus = async () => {
+      try {
+        const response = await fetch('/api/check-blob-token')
+        const data = await response.json()
+        setTokenStatus(data)
+      } catch (error) {
+        console.error('Failed to check token status:', error)
+        setTokenStatus({ hasToken: false, message: 'Failed to check token status' })
+      }
+    }
+    checkTokenStatus()
+  }, [])
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files || [])
@@ -223,9 +239,20 @@ export default function TestBlobPage() {
             <div className="mt-6 p-4 bg-muted rounded-lg">
               <h3 className="font-medium mb-2">Debug Information:</h3>
               <div className="text-sm space-y-1">
-                <p><strong>BLOB_READ_WRITE_TOKEN:</strong> {process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN ? 'Set' : 'Not set'}</p>
+                <p><strong>BLOB_READ_WRITE_TOKEN:</strong> {
+                  tokenStatus ? 
+                    <span className={tokenStatus.hasToken ? 'text-green-600' : 'text-red-600'}>
+                      {tokenStatus.message}
+                    </span>
+                    : 'Checking...'
+                }</p>
                 <p><strong>Environment:</strong> {process.env.NODE_ENV}</p>
                 <p><strong>Vercel Environment:</strong> {process.env.VERCEL_ENV || 'Unknown'}</p>
+                {!tokenStatus?.hasToken && (
+                  <p className="text-red-600 text-xs mt-2">
+                    <strong>Recommendation:</strong> Configure BLOB_READ_WRITE_TOKEN in Vercel environment variables or use Traditional Upload
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>

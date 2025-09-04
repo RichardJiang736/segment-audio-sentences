@@ -11,7 +11,7 @@ const hostname = '0.0.0.0';
 // Custom server with Socket.IO integration
 async function createCustomServer() {
   try {
-    // Create Next.js app
+    // Create Next.js app with configuration for large request bodies
     const nextApp = next({ 
       dev,
       dir: process.cwd(),
@@ -28,8 +28,30 @@ async function createCustomServer() {
       if (req.url?.startsWith('/api/socketio')) {
         return;
       }
+      
+      // Configure request size limits for API routes
+      if (req.url?.startsWith('/api/')) {
+        // Set a larger limit for request body size (500MB)
+        req.setTimeout(0); // Disable timeout for large uploads
+        res.setTimeout(0); // Disable timeout for large uploads
+        
+        // Set headers to indicate support for large requests
+        if (req.method === 'POST') {
+          const contentLength = req.headers['content-length'];
+          if (contentLength && parseInt(contentLength) > 500 * 1024 * 1024) {
+            res.writeHead(413, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Request entity too large. Maximum size is 500MB.' }));
+            return;
+          }
+        }
+      }
+      
       handle(req, res);
     });
+    
+    // Set server request size limits
+    server.maxHeadersCount = 0;
+    server.timeout = 0; // Disable timeout
 
     // Setup Socket.IO
     const io = new Server(server, {

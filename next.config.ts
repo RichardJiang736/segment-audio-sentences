@@ -20,6 +20,16 @@ const nextConfig: NextConfig = {
     // 构建时忽略ESLint错误
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    // For App Router API routes - increase body size limit
+    serverComponentsExternalPackages: [],
+    // This enables larger request bodies for App Router
+    appDir: true,
+    // Configure server actions for large payloads
+    serverActions: {
+      bodySizeLimit: '500mb',
+    },
+  },
 };
 
 export default nextConfig;

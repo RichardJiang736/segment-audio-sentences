@@ -410,9 +410,8 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
             </div>
           </div>
         )}
-
-        <div className="flex gap-2">
-          <Button
+        
+        <Button
             onClick={uploadFiles}
             disabled={isUploading || audioFiles.length === 0 || audioFiles.every(f => f.status === 'Uploaded')}
             className="flex-1 text-sm md:text-base py-2 md:py-3"
@@ -425,21 +424,7 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
             ) : (
               `Upload Files (${uploadMethod === 'traditional' ? 'Traditional' : 'Vercel Blob'})`
             )}
-          </Button>
-          
-          {audioFiles.some(f => f.status === 'Uploaded') && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                const uploadedFiles = audioFiles.filter(f => f.status === 'Uploaded')
-                onUploadComplete(uploadedFiles)
-              }}
-              className="text-sm md:text-base py-2 md:py-3"
-            >
-              Process Uploaded Files
-            </Button>
-          )}
-        </div>
+        </Button>
 
         {audioFiles.some(f => f.status === 'Error') && (
           <Alert variant="destructive">

@@ -103,7 +103,14 @@ async function processUploadedFiles(uploadedFiles: any[], outputFolder: string =
       console.log('输出目录已存在或创建失败:', error); // Debug log
     }
 
-    const results = []
+    interface ProcessedFileResult {
+      id: string
+      name: string
+      segments: any[]
+      status: string
+      progress: number
+    }
+    const results: ProcessedFileResult[] = []
 
     for (const uploadedFile of uploadedFiles) {
       const fileName = uploadedFile.name
@@ -179,7 +186,14 @@ async function processFormFiles(audioFiles: File[], outputFolder: string = './ou
       // Directory already exists
     }
 
-    const results = []
+    interface ProcessedFileResult {
+      id: string
+      name: string
+      segments: any[]
+      status: string
+      progress: number
+    }
+    const results: ProcessedFileResult[] = []
 
     for (const audioFile of audioFiles) {
       const fileBuffer = Buffer.from(await audioFile.arrayBuffer())

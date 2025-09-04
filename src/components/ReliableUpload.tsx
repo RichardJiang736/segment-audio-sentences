@@ -411,20 +411,35 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
           </div>
         )}
 
-        <Button
-          onClick={uploadFiles}
-          disabled={isUploading || audioFiles.length === 0 || audioFiles.every(f => f.status === 'Uploaded')}
-          className="w-full text-sm md:text-base py-2 md:py-3"
-        >
-          {isUploading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Uploading...
-            </>
-          ) : (
-            `Upload Files (${uploadMethod === 'traditional' ? 'Traditional' : 'Vercel Blob'})`
+        <div className="flex gap-2">
+          <Button
+            onClick={uploadFiles}
+            disabled={isUploading || audioFiles.length === 0 || audioFiles.every(f => f.status === 'Uploaded')}
+            className="flex-1 text-sm md:text-base py-2 md:py-3"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              `Upload Files (${uploadMethod === 'traditional' ? 'Traditional' : 'Vercel Blob'})`
+            )}
+          </Button>
+          
+          {audioFiles.some(f => f.status === 'Uploaded') && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                const uploadedFiles = audioFiles.filter(f => f.status === 'Uploaded')
+                onUploadComplete(uploadedFiles)
+              }}
+              className="text-sm md:text-base py-2 md:py-3"
+            >
+              Process Uploaded Files
+            </Button>
           )}
-        </Button>
+        </div>
 
         {audioFiles.some(f => f.status === 'Error') && (
           <Alert variant="destructive">

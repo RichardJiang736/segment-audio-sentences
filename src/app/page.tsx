@@ -83,7 +83,11 @@ export default function Home() {
     setError(null)
 
     try {
-      console.log('发送请求到 /api/process-audio') // Debug log
+      console.log('发送请求到 /api/process-audio', { 
+        audioFilesCount: audioFiles.length,
+        hasBlobFiles: audioFiles.some(af => af.url),
+        outputFolder
+      }) // Debug log
       
       // Check if files have URLs (Blob uploads) or are File objects (traditional uploads)
       const hasBlobFiles = audioFiles.some(af => af.url)
@@ -91,15 +95,18 @@ export default function Home() {
       let response;
       if (hasBlobFiles) {
         // Send as JSON for Blob files
+        const requestBody = {
+          uploadedFiles: audioFiles,
+          outputFolder: outputFolder
+        };
+        console.log('发送 Blob 文件请求体:', requestBody); // Debug log
+        
         response = await fetch('/api/process-audio', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            uploadedFiles: audioFiles,
-            outputFolder: outputFolder
-          })
+          body: JSON.stringify(requestBody)
         })
       } else {
         // Send as FormData for traditional files
@@ -110,6 +117,7 @@ export default function Home() {
           }
         })
         formData.append('outputFolder', outputFolder)
+        console.log('发送传统文件表单数据，文件数:', audioFiles.length); // Debug log
         
         response = await fetch('/api/process-audio', {
           method: 'POST',

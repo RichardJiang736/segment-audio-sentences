@@ -20,15 +20,19 @@ export const config = {
 
 // Function to download file from URL
 async function downloadFile(url: string, filePath: string): Promise<void> {
+  console.log('开始下载文件:', { url, filePath }); // Debug log
   return new Promise((resolve, reject) => {
     const fileStream = createWriteStream(filePath)
     https.get(url, (response) => {
+      console.log('收到响应，状态码:', response.statusCode); // Debug log
       response.pipe(fileStream)
       fileStream.on('finish', () => {
         fileStream.close()
+        console.log('文件下载完成:', filePath); // Debug log
         resolve()
       })
     }).on('error', (error) => {
+      console.error('文件下载错误:', error); // Debug log
       reject(error)
     })
   })
@@ -36,38 +40,67 @@ async function downloadFile(url: string, filePath: string): Promise<void> {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { audioFiles, outputFolder, uploadedFiles } = body
+    console.log('收到处理音频请求'); // Debug log
+    
+    // Check content type to determine how to parse the request
+    const contentType = request.headers.get('content-type') || '';
+    console.log('请求内容类型:', contentType); // Debug log
+    
+    if (contentType.includes('application/json')) {
+      const body = await request.json();
+      console.log('JSON 请求体:', body); // Debug log
+      
+      const { audioFiles, outputFolder, uploadedFiles } = body;
 
-    // Handle client-uploaded files (from Vercel Blob)
-    if (uploadedFiles && uploadedFiles.length > 0) {
-      return await processUploadedFiles(uploadedFiles, outputFolder)
+      // Handle client-uploaded files (from Vercel Blob)
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        console.log('处理上传的文件，数量:', uploadedFiles.length); // Debug log
+        return await processUploadedFiles(uploadedFiles, outputFolder);
+      }
+      
+      // Handle traditional audioFiles parameter
+      if (audioFiles && audioFiles.length > 0) {
+        console.log('处理传统音频文件，数量:', audioFiles.length); // Debug log
+        // Convert to the format expected by processUploadedFiles
+        return await processUploadedFiles(audioFiles, outputFolder);
+      }
+    } else {
+      // Handle traditional file uploads (FormData)
+      console.log('处理表单数据上传'); // Debug log
+      const formData = await request.formData();
+      const files = formData.getAll('audioFiles') as File[];
+      const folder = formData.get('outputFolder') as string || './output';
+      console.log('表单数据文件数:', files.length, '输出文件夹:', folder); // Debug log
+
+      if (!files || files.length === 0) {
+        return NextResponse.json({ error: '没有选择音频文件' }, { status: 400 });
+      }
+
+      return await processFormFiles(files, folder);
     }
-
-    // Handle traditional file uploads (FormData)
-    const formData = await request.formData()
-    const files = formData.getAll('audioFiles') as File[]
-    const folder = formData.get('outputFolder') as string || './output'
-
-    if (!files || files.length === 0) {
-      return NextResponse.json({ error: '没有选择音频文件' }, { status: 400 })
-    }
-
-    return await processFormFiles(files, folder)
+    
+    // If we get here, no files were provided
+    console.log('未提供文件'); // Debug log
+    return NextResponse.json({ error: '没有提供音频文件' }, { status: 400 });
   } catch (error) {
-    console.error('Processing error:', error)
-    return NextResponse.json({ error: '处理音频文件时发生错误' }, { status: 500 })
+    console.error('Processing error:', error);
+    return NextResponse.json({ error: '处理音频文件时发生错误' }, { status: 500 });
   }
 }
 
 async function processUploadedFiles(uploadedFiles: any[], outputFolder: string = './output') {
   try {
+    console.log('开始处理上传的文件，数量:', uploadedFiles.length, '输出文件夹:', outputFolder); // Debug log
+    
     // Create output directory if it doesn't exist
     const outputPath = join(process.cwd(), 'public', outputFolder)
+    console.log('输出路径:', outputPath); // Debug log
+    
     try {
       await mkdir(outputPath, { recursive: true })
     } catch (error) {
       // Directory already exists
+      console.log('输出目录已存在或创建失败:', error); // Debug log
     }
 
     const results = []
@@ -76,13 +109,19 @@ async function processUploadedFiles(uploadedFiles: any[], outputFolder: string =
       const fileName = uploadedFile.name
       const fileUrl = uploadedFile.url
       const filePath = join(outputPath, fileName)
+      
+      console.log('处理文件:', { fileName, fileUrl, filePath }); // Debug log
 
       try {
         // Download the file from Vercel Blob
+        console.log('开始下载文件:', fileUrl); // Debug log
         await downloadFile(fileUrl, filePath)
+        console.log('文件下载完成:', filePath); // Debug log
 
         // Process the audio file with Python script
+        console.log('开始处理Python脚本'); // Debug log
         const pythonResult = await processWithPython(outputPath, outputPath, fileName)
+        console.log('Python脚本处理结果:', pythonResult); // Debug log
         
         if (pythonResult.files && pythonResult.files.length > 0) {
           // Add all file results, not just the first one
@@ -118,6 +157,7 @@ async function processUploadedFiles(uploadedFiles: any[], outputFolder: string =
       }
     }
 
+    console.log('处理完成，结果:', results); // Debug log
     return NextResponse.json({
       files: results,
       totalSegments: results.reduce((total, file) => total + (file.segments?.length || 0), 0),
@@ -200,8 +240,21 @@ async function processFormFiles(audioFiles: File[], outputFolder: string = './ou
 
 async function processWithPython(inputPath: string, outputPath: string, fileName: string) {
   const pythonScriptPath = join(process.cwd(), 'main.py')
-  const { stdout } = await execAsync(`python ${pythonScriptPath} "${inputPath}" "${outputPath}"`)
+  console.log('执行Python脚本:', { pythonScriptPath, inputPath, outputPath, fileName }); // Debug log
   
-  // Parse the JSON output from Python script
-  return JSON.parse(stdout)
+  try {
+    const { stdout, stderr } = await execAsync(`python ${pythonScriptPath} "${inputPath}" "${outputPath}"`)
+    console.log('Python脚本执行完成，stdout:', stdout); // Debug log
+    if (stderr) {
+      console.log('Python脚本stderr:', stderr); // Debug log
+    }
+    
+    // Parse the JSON output from Python script
+    const result = JSON.parse(stdout)
+    console.log('解析后的Python结果:', result); // Debug log
+    return result
+  } catch (error) {
+    console.error('Python脚本执行错误:', error); // Debug log
+    throw error
+  }
 }

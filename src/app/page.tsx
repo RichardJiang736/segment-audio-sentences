@@ -372,6 +372,40 @@ export default function Home() {
           onUploadError={handleBlobUploadError}
         />
 
+        {/* Process Files Button - Shows after successful uploads */}
+        {audioFiles.length > 0 && audioFiles.some(af => af.url || af.file) && !isProcessing && processedFiles.every(pf => pf.status === 'Pending') && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Ready for Processing</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {audioFiles.length} file{audioFiles.length > 1 ? 's' : ''} uploaded successfully. Click below to start speaker diarization and analysis.
+                  </p>
+                </div>
+                <Button
+                  onClick={processAudioFiles}
+                  disabled={isProcessing}
+                  size="lg"
+                  className="px-8 py-3"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="mr-2 h-5 w-5" />
+                      Start Processing
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Error Display */}
         {error && (
           <Alert variant="destructive">

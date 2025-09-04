@@ -4,6 +4,9 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import next from 'next';
 
+// Set Node.js environment variables for large request handling
+process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ' --max-http-header-size=524288000';
+
 const dev = process.env.NODE_ENV !== 'production';
 const currentPort = 3000;
 const hostname = '0.0.0.0';
@@ -52,6 +55,8 @@ async function createCustomServer() {
     // Set server request size limits
     server.maxHeadersCount = 0;
     server.timeout = 0; // Disable timeout
+    server.keepAliveTimeout = 0; // Disable keep-alive timeout
+    server.headersTimeout = 0; // Disable headers timeout
 
     // Setup Socket.IO
     const io = new Server(server, {

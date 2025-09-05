@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
           error: '未找到Vercel Blob令牌。请确保在Vercel环境变量中配置了BLOB_READ_WRITE_TOKEN。',
           recommendation: '在所有环境中使用传统上传方法进行可靠的文件上传。'
         },
-        { status: 500 }
+        { status: 500 }  // TODO: Resolve the code triggering this error
       )
     }
 
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
           console.error('Blob REST API failed:', errorText)
           
           // Provide more helpful error message based on the error
-          let helpfulMessage = '使用SDK和REST API生成上传URL失败'
+          let helpfulMessage = '使用SDK和REST API生成上传URL失败'  // TODO: Resolve the code triggering this error
           if (errorText.includes('Unauthorized') || errorText.includes('Invalid token')) {
             helpfulMessage = 'Vercel Blob认证失败。请确保正确配置了BLOB_READ_WRITE_TOKEN。'
           }

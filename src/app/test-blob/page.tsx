@@ -247,7 +247,7 @@ export default function TestBlobPage() {
                     : 'Checking...'
                 }</p>
                 <p><strong>Environment:</strong> {process.env.NODE_ENV}</p>
-                <p><strong>Vercel Environment:</strong> {process.env.VERCEL_ENV || 'Unknown'}</p>
+                <p><strong>Vercel Environment:</strong> {process.env.BLOB_READ_WRITE_TOKEN || 'Unknown'}</p>
                 {!tokenStatus?.hasToken && (
                   <p className="text-red-600 text-xs mt-2">
                     <strong>Recommendation:</strong> Configure BLOB_READ_WRITE_TOKEN in Vercel environment variables or use Traditional Upload

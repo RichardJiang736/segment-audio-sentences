@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { type PutBlobResult } from '@vercel/blob';
 import { upload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,14 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const progressIntervals = useRef<NodeJS.Timeout[]>([])
+
+  // Clean up intervals on unmount
+  useEffect(() => {
+    return () => {
+      progressIntervals.current.forEach(interval => clearInterval(interval));
+    };
+  }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
@@ -87,10 +95,25 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
           }
           
           // Use the official Vercel Blob client upload method
+          // Simulate progress if real progress is not available
+          let progressValue = 0;
+          const progressSteps = [20, 50, 90, 100];
+          let stepIndex = 0;
+          const stepInterval = 2500; // 10 seconds / 4 steps = 2.5 seconds per step
+          
           const blobResult: PutBlobResult = await upload(audioFile.name, audioFile.file, {
             access: 'public',
             handleUploadUrl: '/api/upload',
             onUploadProgress: (progress) => {
+              // Clear any existing interval for this file
+              const existingIntervalIndex = progressIntervals.current.findIndex(interval => 
+                interval.toString().includes(audioFile.id)
+              );
+              if (existingIntervalIndex !== -1) {
+                clearInterval(progressIntervals.current[existingIntervalIndex]);
+                progressIntervals.current.splice(existingIntervalIndex, 1);
+              }
+              
               // Update progress in real-time
               setAudioFiles(prev => 
                 prev.map(af => 
@@ -101,6 +124,33 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
               )
             }
           })
+          
+          // If no real progress was reported, simulate it
+          if (progressValue === 0) {
+            const interval = setInterval(() => {
+              if (stepIndex < progressSteps.length) {
+                progressValue = progressSteps[stepIndex];
+                stepIndex++;
+                setAudioFiles(prev => 
+                  prev.map(af => 
+                    af.id === audioFile.id 
+                      ? { ...af, progress: progressValue }
+                      : af
+                  )
+                )
+              } else {
+                // Clear this interval when complete
+                const intervalIndex = progressIntervals.current.indexOf(interval);
+                if (intervalIndex !== -1) {
+                  progressIntervals.current.splice(intervalIndex, 1);
+                }
+                clearInterval(interval);
+              }
+            }, stepInterval);
+            
+            // Store interval reference
+            progressIntervals.current.push(interval);
+          }
 
           console.log(`Blob上传成功: ${blobResult.url}`)
 
@@ -111,6 +161,14 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
             status: 'Uploaded' as const,
             progress: 100
           }
+          // Clear progress interval when upload completes
+          const intervalIndex = progressIntervals.current.findIndex(interval => 
+            interval.toString().includes(audioFile.id)
+          );
+          if (intervalIndex !== -1) {
+            clearInterval(progressIntervals.current[intervalIndex]);
+            progressIntervals.current.splice(intervalIndex, 1);
+          }
           setAudioFiles(prev => 
             prev.map(af => 
               af.id === audioFile.id ? uploadedFile : af
@@ -120,6 +178,15 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
         } catch (error) {
           console.error('Blob上传错误:', error)
           const errorMessage = error instanceof Error ? error.message : 'Blob上传失败'
+          
+          // Clear progress interval when upload fails
+          const intervalIndex = progressIntervals.current.findIndex(interval => 
+            interval.toString().includes(audioFile.id)
+          );
+          if (intervalIndex !== -1) {
+            clearInterval(progressIntervals.current[intervalIndex]);
+            progressIntervals.current.splice(intervalIndex, 1);
+          }
           
           // Provide more helpful error message with specific guidance
           let helpfulMessage = errorMessage
@@ -157,11 +224,17 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
       onUploadError(errorMessage)
     } finally {
       setIsUploading(false)
+      // Clear all remaining progress intervals
+      progressIntervals.current.forEach(interval => clearInterval(interval));
+      progressIntervals.current = [];
     }
   }
 
   const resetUploads = () => {
     setAudioFiles([])
+    // Clear all progress intervals
+    progressIntervals.current.forEach(interval => clearInterval(interval));
+    progressIntervals.current = [];
   }
 
   return (
@@ -273,19 +346,6 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
               '上传文件'
             )}
           </Button>
-          
-          {audioFiles.some(f => f.status === 'Uploaded') && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                const uploadedFiles = audioFiles.filter(f => f.status === 'Uploaded')
-                onUploadComplete(uploadedFiles)
-              }}
-              className="text-sm md:text-base py-2 md:py-3"
-            >
-              处理已上传的文件
-            </Button>
-          )}
         </div>
 
         {audioFiles.some(f => f.status === 'Error') && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -25,9 +25,14 @@ export default function TestBlobPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [tokenStatus, setTokenStatus] = useState<{ hasToken: boolean; message: string } | null>(null)
+  const progressIntervals = useRef<NodeJS.Timeout[]>([])
 
-  // Check token status on component mount
+  // Clean up intervals on unmount
   useEffect(() => {
+    return () => {
+      progressIntervals.current.forEach(interval => clearInterval(interval));
+    };
+  }, []);
     const checkTokenStatus = async () => {
       try {
         const response = await fetch('/api/check-blob-token')
@@ -80,10 +85,25 @@ export default function TestBlobPage() {
           console.log(`Uploading file: ${testFile.name}`)
           
           // Upload file to Vercel Blob using the official client method
+          // Simulate progress if real progress is not available
+          let progressValue = 0;
+          const progressSteps = [20, 50, 90, 100];
+          let stepIndex = 0;
+          const stepInterval = 2500; // 10 seconds / 4 steps = 2.5 seconds per step
+          
           const blobResult: PutBlobResult = await upload(testFile.name, testFile.file, {
             access: 'public',
             handleUploadUrl: '/api/upload',
             onUploadProgress: (progress) => {
+              // Clear any existing interval for this file
+              const existingIntervalIndex = progressIntervals.current.findIndex(interval => 
+                interval.toString().includes(testFile.id)
+              );
+              if (existingIntervalIndex !== -1) {
+                clearInterval(progressIntervals.current[existingIntervalIndex]);
+                progressIntervals.current.splice(existingIntervalIndex, 1);
+              }
+              
               // Update progress in real-time
               setFiles(prev => 
                 prev.map(f => 
@@ -94,6 +114,33 @@ export default function TestBlobPage() {
               )
             }
           })
+          
+          // If no real progress was reported, simulate it
+          if (progressValue === 0) {
+            const interval = setInterval(() => {
+              if (stepIndex < progressSteps.length) {
+                progressValue = progressSteps[stepIndex];
+                stepIndex++;
+                setFiles(prev => 
+                  prev.map(f => 
+                    f.id === testFile.id 
+                      ? { ...f, progress: progressValue }
+                      : f
+                  )
+                )
+              } else {
+                // Clear this interval when complete
+                const intervalIndex = progressIntervals.current.indexOf(interval);
+                if (intervalIndex !== -1) {
+                  progressIntervals.current.splice(intervalIndex, 1);
+                }
+                clearInterval(interval);
+              }
+            }, stepInterval);
+            
+            // Store interval reference
+            progressIntervals.current.push(interval);
+          }
 
           console.log(`Upload successful: ${blobResult.url}`)
 
@@ -105,9 +152,26 @@ export default function TestBlobPage() {
                 : f
             )
           )
+          // Clear progress interval when upload completes
+          const intervalIndex = progressIntervals.current.findIndex(interval => 
+            interval.toString().includes(testFile.id)
+          );
+          if (intervalIndex !== -1) {
+            clearInterval(progressIntervals.current[intervalIndex]);
+            progressIntervals.current.splice(intervalIndex, 1);
+          }
         } catch (uploadError) {
           console.error('Upload error:', uploadError)
           const errorMessage = uploadError instanceof Error ? uploadError.message : 'Upload failed'
+          
+          // Clear progress interval when upload fails
+          const intervalIndex = progressIntervals.current.findIndex(interval => 
+            interval.toString().includes(testFile.id)
+          );
+          if (intervalIndex !== -1) {
+            clearInterval(progressIntervals.current[intervalIndex]);
+            progressIntervals.current.splice(intervalIndex, 1);
+          }
           
           // Update file status to error
           setFiles(prev => 
@@ -132,6 +196,9 @@ export default function TestBlobPage() {
       setError(errorMessage)
     } finally {
       setIsUploading(false)
+      // Clear all remaining progress intervals
+      progressIntervals.current.forEach(interval => clearInterval(interval));
+      progressIntervals.current = [];
     }
   }
 
@@ -139,6 +206,9 @@ export default function TestBlobPage() {
     setFiles([])
     setError(null)
     setSuccess(null)
+    // Clear all progress intervals
+    progressIntervals.current.forEach(interval => clearInterval(interval));
+    progressIntervals.current = [];
   }
 
   return (

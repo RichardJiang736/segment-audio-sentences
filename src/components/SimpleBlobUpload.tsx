@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -29,6 +29,14 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const progressIntervals = useRef<NodeJS.Timeout[]>([])
+
+  // Clean up intervals on unmount
+  useEffect(() => {
+    return () => {
+      progressIntervals.current.forEach(interval => clearInterval(interval));
+    };
+  }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
@@ -74,10 +82,25 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
 
         try {
           // Upload file to Vercel Blob using the official client method
+          // Simulate progress if real progress is not available
+          let progressValue = 0;
+          const progressSteps = [20, 50, 90, 100];
+          let stepIndex = 0;
+          const stepInterval = 2500; // 10 seconds / 4 steps = 2.5 seconds per step
+          
           const blobResult: PutBlobResult = await upload(audioFile.name, audioFile.file, {
             access: 'public',
             handleUploadUrl: '/api/upload',
             onUploadProgress: (progress) => {
+              // Clear any existing interval for this file
+              const existingIntervalIndex = progressIntervals.current.findIndex(interval => 
+                interval.toString().includes(audioFile.id)
+              );
+              if (existingIntervalIndex !== -1) {
+                clearInterval(progressIntervals.current[existingIntervalIndex]);
+                progressIntervals.current.splice(existingIntervalIndex, 1);
+              }
+              
               // Update progress in real-time
               setAudioFiles(prev => 
                 prev.map(af => 
@@ -88,6 +111,33 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
               )
             }
           })
+          
+          // If no real progress was reported, simulate it
+          if (progressValue === 0) {
+            const interval = setInterval(() => {
+              if (stepIndex < progressSteps.length) {
+                progressValue = progressSteps[stepIndex];
+                stepIndex++;
+                setAudioFiles(prev => 
+                  prev.map(af => 
+                    af.id === audioFile.id 
+                      ? { ...af, progress: progressValue }
+                      : af
+                  )
+                )
+              } else {
+                // Clear this interval when complete
+                const intervalIndex = progressIntervals.current.indexOf(interval);
+                if (intervalIndex !== -1) {
+                  progressIntervals.current.splice(intervalIndex, 1);
+                }
+                clearInterval(interval);
+              }
+            }, stepInterval);
+            
+            // Store interval reference
+            progressIntervals.current.push(interval);
+          }
 
           // Update file status to uploaded
           const uploadedFile = {
@@ -95,6 +145,14 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
             url: blobResult.url,
             status: 'Uploaded' as const,
             progress: 100
+          }
+          // Clear progress interval when upload completes
+          const intervalIndex = progressIntervals.current.findIndex(interval => 
+            interval.toString().includes(audioFile.id)
+          );
+          if (intervalIndex !== -1) {
+            clearInterval(progressIntervals.current[intervalIndex]);
+            progressIntervals.current.splice(intervalIndex, 1);
           }
           setAudioFiles(prev => 
             prev.map(af => 
@@ -105,6 +163,15 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
         } catch (error) {
           console.error('Upload error:', error)
           const errorMessage = error instanceof Error ? error.message : 'Upload failed'
+          
+          // Clear progress interval when upload fails
+          const intervalIndex = progressIntervals.current.findIndex(interval => 
+            interval.toString().includes(audioFile.id)
+          );
+          if (intervalIndex !== -1) {
+            clearInterval(progressIntervals.current[intervalIndex]);
+            progressIntervals.current.splice(intervalIndex, 1);
+          }
           
           // Update file status to error
           setAudioFiles(prev => 
@@ -128,11 +195,17 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
       onUploadError(errorMessage)
     } finally {
       setIsUploading(false)
+      // Clear all remaining progress intervals
+      progressIntervals.current.forEach(interval => clearInterval(interval));
+      progressIntervals.current = [];
     }
   }
 
   const resetUploads = () => {
     setAudioFiles([])
+    // Clear all progress intervals
+    progressIntervals.current.forEach(interval => clearInterval(interval));
+    progressIntervals.current = [];
   }
 
   return (

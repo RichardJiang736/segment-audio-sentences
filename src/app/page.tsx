@@ -118,7 +118,7 @@ export default function Home() {
       }
 
       console.log('响应状态:', response.status) // Debug log
-
+      
       if (!response.ok) {
         let errorMessage = '处理音频文件失败'
         try {

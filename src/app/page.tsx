@@ -182,7 +182,7 @@ export default function Home() {
     )
   }
 
-  const exportToFile = async (content: string, filename: string, format: 'pdf' | 'docx') => {
+  const exportToFile = async (content: string, fileName: string, format: 'pdf' | 'docx') => {
     if (!content.trim()) {
       alert('内容为空。请输入一些文本以导出。');
       return;
@@ -203,7 +203,7 @@ export default function Home() {
           <html>
           <head>
             <meta charset="UTF-8">
-            <title>${filename}</title>
+            <title>${fileName}</title>
             <style>
               body {
                 font-family: 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', 'Arial', sans-serif;
@@ -226,7 +226,7 @@ export default function Home() {
             </style>
           </head>
           <body>
-            <h1>${filename}</h1>
+            <h1>${fileName}</h1>
             <div class="content">${content.replace(/\n/g, '<br>')}</div>
             <script>
               // Automatically trigger print dialog when page loads
@@ -307,7 +307,7 @@ export default function Home() {
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
         '<w:body>' +
-        `<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>${filename}</w:t></w:r></w:p>` +
+        `<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>${fileName}</w:t></w:r></w:p>` +
         '<w:p><w:r></w:r></w:p>' + // Empty paragraph for spacing
         '<w:p><w:r>' + escapedContent + '</w:r></w:p>' +
         '</w:body>' +
@@ -322,7 +322,7 @@ export default function Home() {
         
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${filename}.docx`;
+        link.download = `${fileName}.docx`;
         
         document.body.appendChild(link);
         link.click();

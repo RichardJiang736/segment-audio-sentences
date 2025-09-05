@@ -51,3 +51,4 @@ server.logvenv
 # packages
 venv/
 node_modules/
+.env*.local

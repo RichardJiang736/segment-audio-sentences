@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { type PutBlobResult } from '@vercel/blob';
+import { upload } from '@vercel/blob/client';
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -84,58 +86,37 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
             throw new Error('文件为空。请选择有效的音频文件。')
           }
           
-          // First try to get an upload URL from the server
-          // This avoids the client-side token issue
-          const uploadResponse = await fetch('/api/generate-upload-url', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              fileName: audioFile.name,
-              contentType: audioFile.file.type || 'audio/wav',
-              size: audioFile.file.size
-            })
+          // Use the official Vercel Blob client upload method
+          const blobResult: PutBlobResult = await upload(audioFile.name, audioFile.file, {
+            access: 'public',
+            handleUploadUrl: '/api/upload',
+            onUploadProgress: (progress) => {
+              // Update progress in real-time
+              setAudioFiles(prev => 
+                prev.map(af => 
+                  af.id === audioFile.id 
+                    ? { ...af, progress: Math.round(progress * 100) }
+                    : af
+                )
+              )
+            }
           })
 
-          if (uploadResponse.ok) {
-            // Use server-provided upload URL
-            const { uploadUrl, publicUrl } = await uploadResponse.json()
-            
-            // Upload directly to the provided URL
-            const uploadResult = await fetch(uploadUrl, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': audioFile.file.type || 'audio/wav',
-              },
-              body: audioFile.file
-            })
+          console.log(`Blob上传成功: ${blobResult.url}`)
 
-            if (!uploadResult.ok) {
-              throw new Error(`上传失败，状态码: ${uploadResult.status}`)
-            }
-
-            console.log(`Blob上传成功: ${publicUrl}`)
-
-            // Update file status to uploaded
-            const uploadedFile = {
-              ...audioFile,
-              url: publicUrl,
-              status: 'Uploaded' as const,
-              progress: 100
-            }
-            setAudioFiles(prev => 
-              prev.map(af => 
-                af.id === audioFile.id ? uploadedFile : af
-              )
-            )
-            uploadedFiles.push(uploadedFile)
-          } else {
-            // Server upload URL generation failed - get error details
-            const errorData = await uploadResponse.json().catch(() => ({}))
-            const serverError = errorData.error || '服务器上传URL生成失败'
-            throw new Error(serverError)
+          // Update file status to uploaded
+          const uploadedFile = {
+            ...audioFile,
+            url: blobResult.url,
+            status: 'Uploaded' as const,
+            progress: 100
           }
+          setAudioFiles(prev => 
+            prev.map(af => 
+              af.id === audioFile.id ? uploadedFile : af
+            )
+          )
+          uploadedFiles.push(uploadedFile)
         } catch (error) {
           console.error('Blob上传错误:', error)
           const errorMessage = error instanceof Error ? error.message : 'Blob上传失败'

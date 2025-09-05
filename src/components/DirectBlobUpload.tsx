@@ -7,6 +7,8 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Upload, Loader2, CheckCircle, XCircle, Trash2 } from 'lucide-react'
+import { upload } from '@vercel/blob/client'
+import type { PutBlobResult } from '@vercel/blob'
 
 interface AudioFile {
   id: string
@@ -71,47 +73,41 @@ export default function DirectBlobUpload({ onUploadComplete, onUploadError }: Di
         )
 
         try {
-          console.log(`Getting upload URL for: ${audioFile.name}`)
+          console.log(`Uploading file to Blob: ${audioFile.name}`)
           
-          // Step 1: Get upload URL from our API
-          const urlResponse = await fetch('/api/generate-upload-url', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              filename: audioFile.name,
-              contentType: audioFile.file.type || 'audio/wav',
-            }),
+          // Validate file format before attempting upload
+          const validTypes = ['audio/wav', 'audio/mp3', 'audio/flac', 'audio/m4a', 'audio/aac']
+          if (!validTypes.includes(audioFile.file.type) && !audioFile.name.match(/\.(wav|mp3|flac|m4a|aac)$/i)) {
+            throw new Error('Invalid file format. Please upload WAV, MP3, FLAC, M4A, or AAC files.')
+          }
+          
+          // Validate file size (empty files)
+          if (audioFile.file.size === 0) {
+            throw new Error('File is empty. Please select a valid audio file.')
+          }
+          
+          // Use the official Vercel Blob client upload method
+          const blobResult: PutBlobResult = await upload(audioFile.name, audioFile.file, {
+            access: 'public',
+            handleUploadUrl: '/api/upload',
+            onUploadProgress: (progress) => {
+              // Update progress in real-time
+              setAudioFiles(prev => 
+                prev.map(af => 
+                  af.id === audioFile.id 
+                    ? { ...af, progress: Math.round(progress * 100) }
+                    : af
+                )
+              )
+            }
           })
 
-          if (!urlResponse.ok) {
-            const errorData = await urlResponse.json()
-            throw new Error(errorData.error || 'Failed to get upload URL')
-          }
-
-          const { uploadUrl, downloadUrl } = await urlResponse.json()
-          console.log(`Got upload URL: ${uploadUrl}`)
-
-          // Step 2: Upload file directly to Vercel Blob
-          const uploadResponse = await fetch(uploadUrl, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': audioFile.file.type || 'audio/wav',
-            },
-            body: audioFile.file,
-          })
-
-          if (!uploadResponse.ok) {
-            throw new Error('Failed to upload file to Vercel Blob')
-          }
-
-          console.log(`Upload successful: ${downloadUrl}`)
+          console.log(`Blob upload successful: ${blobResult.url}`)
 
           // Update file status to uploaded
           const uploadedFile = {
             ...audioFile,
-            url: downloadUrl,
+            url: blobResult.url,
             status: 'Uploaded' as const,
             progress: 100
           }

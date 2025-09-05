@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Upload, Loader2, CheckCircle, XCircle } from 'lucide-react'
-import { put } from '@vercel/blob'
+import { upload } from '@vercel/blob/client'
+import type { PutBlobResult } from '@vercel/blob'
 
 interface TestFile {
   id: string
@@ -78,18 +79,29 @@ export default function TestBlobPage() {
         try {
           console.log(`Uploading file: ${testFile.name}`)
           
-          // Upload file to Vercel Blob using the put method
-          const blob = await put(testFile.name, testFile.file, {
+          // Upload file to Vercel Blob using the official client method
+          const blobResult: PutBlobResult = await upload(testFile.name, testFile.file, {
             access: 'public',
+            handleUploadUrl: '/api/upload',
+            onUploadProgress: (progress) => {
+              // Update progress in real-time
+              setFiles(prev => 
+                prev.map(f => 
+                  f.id === testFile.id 
+                    ? { ...f, progress: Math.round(progress * 100) }
+                    : f
+                )
+              )
+            }
           })
 
-          console.log(`Upload successful: ${blob.url}`)
+          console.log(`Upload successful: ${blobResult.url}`)
 
           // Update file status to uploaded
           setFiles(prev => 
             prev.map(f => 
               f.id === testFile.id 
-                ? { ...f, url: blob.url, status: 'Uploaded', progress: 100 }
+                ? { ...f, url: blobResult.url, status: 'Uploaded', progress: 100 }
                 : f
             )
           )

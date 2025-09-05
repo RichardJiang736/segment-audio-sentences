@@ -7,7 +7,8 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Upload, Loader2, CheckCircle, XCircle, Trash2 } from 'lucide-react'
-import { put } from '@vercel/blob'
+import { upload } from '@vercel/blob/client'
+import type { PutBlobResult } from '@vercel/blob'
 
 interface AudioFile {
   id: string
@@ -72,15 +73,26 @@ export default function SimpleBlobUpload({ onUploadComplete, onUploadError }: Si
         )
 
         try {
-          // Upload file to Vercel Blob using the put method
-          const blob = await put(audioFile.name, audioFile.file, {
+          // Upload file to Vercel Blob using the official client method
+          const blobResult: PutBlobResult = await upload(audioFile.name, audioFile.file, {
             access: 'public',
+            handleUploadUrl: '/api/upload',
+            onUploadProgress: (progress) => {
+              // Update progress in real-time
+              setAudioFiles(prev => 
+                prev.map(af => 
+                  af.id === audioFile.id 
+                    ? { ...af, progress: Math.round(progress * 100) }
+                    : af
+                )
+              )
+            }
           })
 
           // Update file status to uploaded
           const uploadedFile = {
             ...audioFile,
-            url: blob.url,
+            url: blobResult.url,
             status: 'Uploaded' as const,
             progress: 100
           }

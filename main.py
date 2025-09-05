@@ -161,14 +161,14 @@ def process_audio_file(audio_path, pipeline, target_root_dir):
         
         # Save as WAV file inside the per-audio folder
         safe_speaker = str(speaker).replace(os.sep, "-")
-        filename = os.path.join(
+        fileName = os.path.join(
             out_dir,
             f"clip_{clip_count:03d}_speaker_{safe_speaker}_{turn.start:.1f}s-{turn.end:.1f}s.wav",
         )
         
         try:
-            clip.export(filename, format="wav")
-            print(f"     💾 Saved: {filename}", file=stdout_redirector)
+            clip.export(fileName, format="wav")
+            print(f"     💾 Saved: {fileName}", file=stdout_redirector)
             
             # Add segment to results
             file_segments.append({
@@ -177,7 +177,7 @@ def process_audio_file(audio_path, pipeline, target_root_dir):
                 "startTime": float(turn.start),
                 "endTime": float(turn.end),
                 "duration": float(turn.end - turn.start),
-                "audioUrl": f"/api/audio/{base}/{os.path.basename(filename)}"
+                "audioUrl": f"/api/audio/{base}/{os.path.basename(fileName)}"
             })
             
         except Exception as e:

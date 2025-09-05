@@ -25,7 +25,7 @@ export default function AudioWaveform({ className }: AudioWaveformProps) {
   const [currentTime, setCurrentTime] = useState(0)
   const [volume, setVolume] = useState([0.7])
   const [isMuted, setIsMuted] = useState(false)
-  const [fileName, setFileName] = useState('')
+  const [fileName, setfileName] = useState('')
 
   // 初始化 WaveSurfer
   useEffect(() => {
@@ -75,7 +75,7 @@ export default function AudioWaveform({ className }: AudioWaveformProps) {
     if (file && file.type.startsWith('audio/')) {
       setIsLoading(true)
       setAudioFile(file)
-      setFileName(file.name)
+      setfileName(file.name)
       
       // 创建 URL 并加载音频
       const url = URL.createObjectURL(file)

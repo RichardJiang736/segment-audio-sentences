@@ -25,8 +25,16 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '500mb',
     },
+    // Configure API routes for large payloads
+    serverComponentsExternalPackages: ['@vercel/blob'],
   },
   serverExternalPackages: [],
+  // Configure body parser for API routes
+  api: {
+    bodyParser: {
+      sizeLimit: '500mb',
+    },
+  },
 };
 
 export default nextConfig;

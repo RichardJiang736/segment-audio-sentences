@@ -17,7 +17,8 @@ export const config = {
       sizeLimit: '500mb',
     },
   },
-  maxBodySize: 524288000, // 500MB in bytes
+  // Also set the max body size for the route
+  maxBodySize: '500mb',
 };
 
 // Function to download file from URL
@@ -91,7 +92,8 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error) {
       // Check for common error types
       if (error.message.includes('request entity too large') || 
-          error.message.includes('PayloadTooLargeError')) {
+          error.message.includes('PayloadTooLargeError') ||
+          error.message.includes('413')) {
         return NextResponse.json({ 
           error: '文件太大，无法处理。请使用文件大小小于500MB的文件，或尝试使用Vercel Blob上传方法。',
           details: 'File size exceeds 500MB limit. Try using Vercel Blob upload method for larger files.'

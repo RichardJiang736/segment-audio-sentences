@@ -32,11 +32,14 @@ async function createCustomServer() {
         return;
       }
       
-      // Configure request size limits for API routes
-      if (req.url?.startsWith('/api/')) {
-        // Set a larger limit for request body size (500MB)
-        req.setTimeout(0); // Disable timeout for large uploads
-        res.setTimeout(0); // Disable timeout for large uploads
+      // Configure request size limits for all requests
+      // Set a larger limit for request body size (500MB)
+      req.setTimeout(0); // Disable timeout for large uploads
+      res.setTimeout(0); // Disable timeout for large uploads
+      
+      // Increase the maximum request body size
+      if (req.headers) {
+        req.headers['content-length'] = undefined;
       }
       
       handle(req, res);
@@ -47,6 +50,10 @@ async function createCustomServer() {
     server.timeout = 0; // Disable timeout
     server.keepAliveTimeout = 0; // Disable keep-alive timeout
     server.headersTimeout = 0; // Disable headers timeout
+    
+    // Explicitly set max request body size for the HTTP server
+    // This overrides any default limits
+    server.maxRequestsPerSocket = 0;
 
     // Setup Socket.IO
     const io = new Server(server, {

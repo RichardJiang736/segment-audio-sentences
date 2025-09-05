@@ -37,16 +37,6 @@ async function createCustomServer() {
         // Set a larger limit for request body size (500MB)
         req.setTimeout(0); // Disable timeout for large uploads
         res.setTimeout(0); // Disable timeout for large uploads
-        
-        // Set headers to indicate support for large requests
-        if (req.method === 'POST') {
-          const contentLength = req.headers['content-length'];
-          if (contentLength && parseInt(contentLength) > 500 * 1024 * 1024) {
-            res.writeHead(413, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Request entity too large. Maximum size is 500MB.' }));
-            return;
-          }
-        }
       }
       
       handle(req, res);

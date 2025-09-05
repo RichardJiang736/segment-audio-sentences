@@ -10,6 +10,16 @@ const execAsync = promisify(exec)
 
 export const maxDuration = 300;
 
+// Configure API route to handle large request bodies
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '500mb',
+    },
+  },
+  maxBodySize: 524288000, // 500MB in bytes
+};
+
 // Function to download file from URL
 async function downloadFile(url: string, filePath: string): Promise<void> {
   console.log('开始下载文件:', { url, filePath }); // Debug log
@@ -76,7 +86,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '没有提供音频文件' }, { status: 400 });
   } catch (error) {
     console.error('Processing error:', error);
-    return NextResponse.json({ error: '处理音频文件时发生错误' }, { status: 500 });
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      // Check for common error types
+      if (error.message.includes('request entity too large') || 
+          error.message.includes('PayloadTooLargeError')) {
+        return NextResponse.json({ 
+          error: '文件太大，无法处理。请使用文件大小小于500MB的文件，或尝试使用Vercel Blob上传方法。',
+          details: 'File size exceeds 500MB limit. Try using Vercel Blob upload method for larger files.'
+        }, { status: 413 });
+      }
+      
+      if (error.message.includes('Invalid file type') || 
+          error.message.includes('Unsupported media type')) {
+        return NextResponse.json({ 
+          error: '不支持的文件格式。请上传音频文件（如MP3、WAV、M4A等）。',
+          details: 'Unsupported file format. Please upload audio files (MP3, WAV, M4A, etc.).'
+        }, { status: 415 });
+      }
+    }
+    
+    return NextResponse.json({ 
+      error: '处理音频文件时发生错误',
+      details: error instanceof Error ? error.message : 'Unknown error occurred'
+    }, { status: 500 });
   }
 }
 

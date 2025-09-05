@@ -106,6 +106,10 @@ export default function Home() {
         const formData = new FormData()
         audioFiles.forEach(af => {
           if (af.file) {
+            // Check file size before sending
+            if (af.file.size > 10 * 1024 * 1024) { // 10MB limit for traditional upload
+              throw new Error('文件太大，无法处理。请使用文件大小小于10MB的文件，或尝试使用Vercel Blob上传方法。')
+            }
             formData.append('audioFiles', af.file)
           }
         })

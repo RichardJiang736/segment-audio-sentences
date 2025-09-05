@@ -217,18 +217,12 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
           helpfulMessage = 'Vercel Blob token not found. Please ensure BLOB_READ_WRITE_TOKEN is configured in your Vercel environment variables, or use Traditional Upload method.'
         } else if (errorMessage.includes('Failed to retrieve the client token') || errorMessage.includes('authentication failed')) {
           helpfulMessage = 'Vercel Blob authentication failed. This is a known issue in some Vercel environments. Please use Traditional Upload method instead.'
-        } else if (errorMessage.includes('File size is under 500MB')) {
-          helpfulMessage = `${errorMessage} Traditional Upload is recommended for files under 500MB for better reliability.`
         } else if (errorMessage.includes('Invalid') && errorMessage.includes('format')) {
           helpfulMessage = 'Invalid file format. Please upload files in WAV, MP3, FLAC, M4A, or AAC formats only.'
         } else {
           // Generic error - provide helpful guidance
           const fileSizeMB = Math.round(audioFile.file.size / (1024 * 1024))
-          if (fileSizeMB < 500) {
-            helpfulMessage = `${errorMessage} For files under 500MB (your file: ${fileSizeMB}MB), Traditional Upload is recommended for better reliability.`
-          } else {
-            helpfulMessage = `${errorMessage} Please try Traditional Upload method as an alternative.`
-          }
+          helpfulMessage = `${errorMessage} For files under 500MB, Traditional Upload is recommended for better reliability.`
         }
         
         // Update file status to error

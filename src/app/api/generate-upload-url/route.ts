@@ -25,17 +25,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file size - recommend Traditional upload for files under 500MB
-    if (size && size < 500 * 1024 * 1024) {
-      return NextResponse.json(
-        { 
-          error: 'File size is under 500MB. For better reliability with smaller files, please use Traditional Upload method.',
-          recommendation: 'Use Vercel Blob upload only for files over 500MB.'
-        },
-        { status: 400 }
-      )
-    }
-
     // Generate a unique pathname for the blob
     const pathname = `uploads/${Date.now()}-${fileName}`
 

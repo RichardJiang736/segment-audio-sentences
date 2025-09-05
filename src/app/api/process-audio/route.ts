@@ -95,8 +95,9 @@ export async function POST(request: NextRequest) {
           error.message.includes('PayloadTooLargeError') ||
           error.message.includes('413')) {
         return NextResponse.json({ 
-          error: '文件太大，无法处理。请使用文件大小小于500MB的文件，或尝试使用Vercel Blob上传方法。',
-          details: 'File size exceeds 500MB limit. Try using Vercel Blob upload method for larger files.'
+          error: '文件太大，无法处理。请使用文件大小小于10MB的文件，或尝试使用Vercel Blob上传方法。',
+          details: 'File size exceeds Vercel\'s 10MB limit for serverless functions. Try using Vercel Blob upload method for larger files.',
+          recommendation: 'Use Vercel Blob upload for files larger than 10MB when deploying to Vercel.'
         }, { status: 413 });
       }
       

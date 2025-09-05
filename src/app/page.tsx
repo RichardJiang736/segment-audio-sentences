@@ -353,7 +353,7 @@ export default function Home() {
         />
 
         {/* Process Files Button - Shows after successful uploads */}
-        {audioFiles.length > 0 && audioFiles.some(af => af.url || af.file) && !isProcessing && processedFiles.every(pf => pf.status === 'Pending') && (
+        {audioFiles.length > 0 && audioFiles.some(af => af.url) && !isProcessing && (
           <Card>
             <CardContent className="pt-6">
               <div className="text-center space-y-4">
@@ -392,9 +392,14 @@ export default function Home() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
+        {processedFiles.some(pf => pf.status === 'Error') && !error && (
+          <Alert variant="destructive">
+            <AlertDescription>处理音频文件时发生错误。请检查文件格式和大小，然后重试。</AlertDescription>
+          </Alert>
+        )}
 
         {/* Results Section */}
-        {(processedFiles.length > 0 || isProcessing) && (
+        {(processedFiles.length > 0 && !processedFiles.every(pf => pf.status === 'Pending')) && (
           <div className="space-y-6">
             <h2 className="text-2xl md:text-3xl font-bold">结果</h2>
             <div className="grid gap-4 md:gap-6">
@@ -527,19 +532,9 @@ export default function Home() {
                   </CardContent>
                 </Card>
               ))}
-              {isProcessing && processedFiles.length === 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg md:text-xl">处理文件中...</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground text-sm">请等待您的音频文件被处理。</p>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           </div>
-        )}
+        )
       </div>
     </div>
   )

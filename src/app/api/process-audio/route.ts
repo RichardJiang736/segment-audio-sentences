@@ -122,14 +122,31 @@ async function processUploadedFiles(uploadedFiles: any[], outputFolder: string =
     console.log('开始处理上传的文件，数量:', uploadedFiles.length, '输出文件夹:', outputFolder); // Debug log
     
     // Create output directory if it doesn't exist
-    const outputPath = join(process.cwd(), 'public', outputFolder)
+    let outputPath = join(process.cwd(), 'public', outputFolder)
     console.log('输出路径:', outputPath); // Debug log
     
     try {
+      // Ensure parent directories exist
+      const parentDir = join(process.cwd(), 'public')
+      await mkdir(parentDir, { recursive: true })
       await mkdir(outputPath, { recursive: true })
     } catch (error) {
-      // Directory already exists
-      console.log('输出目录已存在或创建失败:', error); // Debug log
+      console.log('输出目录创建失败:', error); // Debug log
+      // Try alternative path for Vercel
+      const alternativePath = join('/tmp', outputFolder)
+      console.log('尝试替代路径:', alternativePath); // Debug log
+      try {
+        await mkdir(alternativePath, { recursive: true })
+        // If successful, use alternative path
+        const newPath = join(alternativePath, 'output')
+        await mkdir(newPath, { recursive: true })
+        // Update outputPath to use alternative
+        outputPath = newPath
+        console.log('使用替代路径:', outputPath); // Debug log
+      } catch (altError) {
+        console.error('替代路径也失败:', altError); // Debug log
+        throw error
+      }
     }
 
     interface ProcessedFileResult {
@@ -208,11 +225,28 @@ async function processUploadedFiles(uploadedFiles: any[], outputFolder: string =
 async function processFormFiles(audioFiles: File[], outputFolder: string = './output') {
   try {
     // Create output directory if it doesn't exist
-    const outputPath = join(process.cwd(), 'public', outputFolder)
+    let outputPath = join(process.cwd(), 'public', outputFolder)
     try {
+      // Ensure parent directories exist
+      const parentDir = join(process.cwd(), 'public')
+      await mkdir(parentDir, { recursive: true })
       await mkdir(outputPath, { recursive: true })
     } catch (error) {
-      // Directory already exists
+      console.log('输出目录创建失败:', error); // Debug log
+      // Try alternative path for Vercel
+      const alternativePath = join('/tmp', outputFolder)
+      console.log('尝试替代路径:', alternativePath); // Debug log
+      try {
+        await mkdir(alternativePath, { recursive: true })
+        // If successful, use alternative path
+        const newPath = join(alternativePath, 'output')
+        await mkdir(newPath, { recursive: true })
+        outputPath = newPath
+        console.log('使用替代路径:', outputPath); // Debug log
+      } catch (altError) {
+        console.error('替代路径也失败:', altError); // Debug log
+        throw error
+      }
     }
 
     interface ProcessedFileResult {

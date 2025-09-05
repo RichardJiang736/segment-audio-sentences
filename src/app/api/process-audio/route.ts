@@ -96,8 +96,8 @@ export async function POST(request: NextRequest) {
           error.message.includes('413')) {
         return NextResponse.json({ 
           error: '文件太大，无法处理。请使用文件大小小于10MB的文件，或尝试使用Vercel Blob上传方法。',
-          details: 'File size exceeds Vercel\'s 10MB limit for serverless functions. Try using Vercel Blob upload method for larger files.',
-          recommendation: 'Use Vercel Blob upload for files larger than 10MB when deploying to Vercel.'
+          details: '文件大小超过了Vercel服务器less函数的10MB限制。请尝试使用Vercel Blob上传方法处理大文件。',
+          recommendation: '在Vercel上部署时，对于大于10MB的文件请使用Vercel Blob上传。'
         }, { status: 413 });
       }
       
@@ -105,14 +105,14 @@ export async function POST(request: NextRequest) {
           error.message.includes('Unsupported media type')) {
         return NextResponse.json({ 
           error: '不支持的文件格式。请上传音频文件（如MP3、WAV、M4A等）。',
-          details: 'Unsupported file format. Please upload audio files (MP3, WAV, M4A, etc.).'
+          details: '不支持的文件格式。请上传音频文件（MP3、WAV、M4A等）。'
         }, { status: 415 });
       }
     }
     
     return NextResponse.json({ 
       error: '处理音频文件时发生错误',
-      details: error instanceof Error ? error.message : 'Unknown error occurred'
+      details: error instanceof Error ? error.message : '发生未知错误'
     }, { status: 500 });
   }
 }

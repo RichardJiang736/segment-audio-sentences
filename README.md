@@ -84,6 +84,14 @@ python3.9 -m venv venv && source venv/bin/activate && pip install --upgrade pip 
 npm run dev
 ```
 
+### ☁️ Vercel 部署
+
+要将应用部署到 Vercel，您需要配置以下环境变量：
+
+1. `BLOB_READ_WRITE_TOKEN` - Vercel Blob 存储的读写令牌，用于处理大文件上传
+
+在 Vercel 项目设置中添加这些环境变量以确保应用正常运行。
+
 ## 🌿 致谢
 
 谨以此项目，感谢自 2023 年便投身于**文化与语言保护事业**的导师与前辈们。

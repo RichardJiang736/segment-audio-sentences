@@ -4,11 +4,11 @@ import { put } from '@vercel/blob'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { fileName, contentType, size } = body
+    const { fileName, contentType } = body
 
     if (!fileName || !contentType) {
       return NextResponse.json(
-        { error: 'Missing fileName or contentType' },
+        { error: '缺少文件名或内容类型' },
         { status: 400 }
       )
     }
@@ -18,8 +18,8 @@ export async function POST(request: NextRequest) {
       console.error('BLOB_READ_WRITE_TOKEN not found in environment variables')
       return NextResponse.json(
         { 
-          error: 'Vercel Blob token not found. Please ensure BLOB_READ_WRITE_TOKEN is configured in your Vercel environment variables, or use Traditional Upload method.',
-          recommendation: 'Use Traditional Upload method for reliable file uploads in all environments.'
+          error: '未找到Vercel Blob令牌。请确保在Vercel环境变量中配置了BLOB_READ_WRITE_TOKEN。',
+          recommendation: '在所有环境中使用传统上传方法进行可靠的文件上传。'
         },
         { status: 500 }
       )
@@ -65,15 +65,15 @@ export async function POST(request: NextRequest) {
           console.error('Blob REST API failed:', errorText)
           
           // Provide more helpful error message based on the error
-          let helpfulMessage = 'Failed to generate upload URL using both SDK and REST API'
+          let helpfulMessage = '使用SDK和REST API生成上传URL失败'
           if (errorText.includes('Unauthorized') || errorText.includes('Invalid token')) {
-            helpfulMessage = 'Vercel Blob authentication failed. Please ensure BLOB_READ_WRITE_TOKEN is properly configured, or use Traditional Upload method.'
+            helpfulMessage = 'Vercel Blob认证失败。请确保正确配置了BLOB_READ_WRITE_TOKEN。'
           }
           
           return NextResponse.json(
             { 
               error: helpfulMessage,
-              recommendation: 'Use Traditional Upload method for reliable file uploads in all environments.'
+              recommendation: '在所有环境中使用传统上传方法进行可靠的文件上传。'
             },
             { status: 500 }
           )
@@ -91,8 +91,8 @@ export async function POST(request: NextRequest) {
         console.error('REST API fallback failed:', restError)
         return NextResponse.json(
           { 
-            error: 'Vercel Blob authentication failed. This is a known issue in some Vercel environments. Please use Traditional Upload method instead.',
-            recommendation: 'Use Traditional Upload method for reliable file uploads in all environments.'
+            error: 'Vercel Blob认证失败。这是Vercel环境中已知的问题。',
+            recommendation: '在所有环境中使用传统上传方法进行可靠的文件上传。'
           },
           { status: 500 }
         )
@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
     console.error('Generate upload URL error:', error)
     return NextResponse.json(
       { 
-        error: 'Failed to generate upload URL. Please use Traditional Upload method.',
-        recommendation: 'Use Traditional Upload method for reliable file uploads in all environments.'
+        error: '生成上传URL失败。',
+        recommendation: '在所有环境中使用传统上传方法进行可靠的文件上传。'
       },
       { status: 500 }
     )

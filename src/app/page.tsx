@@ -72,7 +72,7 @@ export default function Home() {
     setError(errorMessage)
   }
 
-  // Main process function - handles both traditional and blob uploads
+  // Main process function - handles blob uploads
   const processAudioFiles = async () => {
     if (audioFiles.length === 0) {
       setError('请选择至少一个音频文件')
@@ -85,41 +85,17 @@ export default function Home() {
     try {
       console.log('发送请求到 /api/process-audio')
       
-      // Check if files have URLs (Blob uploads) or are File objects (traditional uploads)
-      const hasBlobFiles = audioFiles.some(af => af.url)
-      
-      let response;
-      if (hasBlobFiles) {
-        // Send as JSON for Blob files        
-        response = await fetch('/api/process-audio', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            uploadedFiles: audioFiles,
-            outputFolder: outputFolder
-          })
+      // Send as JSON for Blob files        
+      const response = await fetch('/api/process-audio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          uploadedFiles: audioFiles,
+          outputFolder: outputFolder
         })
-      } else {
-        // Send as FormData for traditional files
-        const formData = new FormData()
-        audioFiles.forEach(af => {
-          if (af.file) {
-            // Check file size before sending
-            if (af.file.size > 10 * 1024 * 1024) { // 10MB limit for traditional upload
-              throw new Error('文件太大，无法处理。请使用文件大小小于10MB的文件，或尝试使用Vercel Blob上传方法。')
-            }
-            formData.append('audioFiles', af.file)
-          }
-        })
-        formData.append('outputFolder', outputFolder)
-        
-        response = await fetch('/api/process-audio', {
-          method: 'POST',
-          body: formData
-        })
-      }
+      })
 
       console.log('响应状态:', response.status) // Debug log
       
@@ -382,9 +358,9 @@ export default function Home() {
             <CardContent className="pt-6">
               <div className="text-center space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Ready for Processing</h3>
+                  <h3 className="text-lg font-semibold mb-2">准备处理</h3>
                   <p className="text-sm text-muted-foreground">
-                    {audioFiles.length} file{audioFiles.length > 1 ? 's' : ''} uploaded successfully. Click below to start speaker diarization and analysis.
+                    已成功上传 {audioFiles.length} 个文件。点击下方开始说话人分离和分析。
                   </p>
                 </div>
                 <Button
@@ -396,12 +372,12 @@ export default function Home() {
                   {isProcessing ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Processing...
+                      处理中...
                     </>
                   ) : (
                     <>
                       <Play className="mr-2 h-5 w-5" />
-                      Start Processing
+                      开始处理
                     </>
                   )}
                 </Button>

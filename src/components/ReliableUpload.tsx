@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Upload, Loader2, CheckCircle, XCircle, Trash2, CloudUpload } from 'lucide-react'
+import { Upload, Loader2, CheckCircle, XCircle, Trash2 } from 'lucide-react'
 
 interface AudioFile {
   id: string
@@ -26,7 +26,6 @@ interface ReliableUploadProps {
 export default function ReliableUpload({ onUploadComplete, onUploadError }: ReliableUploadProps) {
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([])
   const [isUploading, setIsUploading] = useState(false)
-  const [uploadMethod, setUploadMethod] = useState<'traditional' | 'blob'>('traditional')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,223 +48,131 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
     setAudioFiles(prev => prev.filter(af => af.id !== id))
   }
 
-  const uploadFilesTraditional = async () => {
-    // For traditional upload, we need to actually validate the files
-    // and simulate upload progress for better user experience
-    const uploadedFiles: AudioFile[] = []
-    
-    for (const audioFile of audioFiles) {
-      if (audioFile.status === 'Uploaded') continue
-      
-      // Update file status to uploading
-      setAudioFiles(prev => 
-        prev.map(af => 
-          af.id === audioFile.id 
-            ? { ...af, status: 'Uploading', progress: 0 }
-            : af
-        )
-      )
-      
-      try {
-        // Simulate upload progress for better UX
-        const progressSteps = [10, 25, 50, 75, 90, 100]
-        for (const progress of progressSteps) {
-          await new Promise(resolve => setTimeout(resolve, 200))
-          setAudioFiles(prev => 
-            prev.map(af => 
-              af.id === audioFile.id 
-                ? { ...af, progress }
-                : af
-            )
-          )
-        }
-        
-        // Validate file size and format
-        if (audioFile.file.size === 0) {
-          throw new Error('File is empty')
-        }
-        
-        if (audioFile.file.size > 500 * 1024 * 1024) { // 500MB limit
-          throw new Error('File size exceeds 500MB limit. Please use Vercel Blob upload for large files.')
-        }
-        
-        const validTypes = ['audio/wav', 'audio/mp3', 'audio/flac', 'audio/m4a', 'audio/aac']
-        if (!validTypes.includes(audioFile.file.type) && !audioFile.name.match(/\.(wav|mp3|flac|m4a|aac)$/i)) {
-          throw new Error('Invalid file format. Please upload WAV, MP3, FLAC, M4A, or AAC files.')
-        }
-        
-        // Mark as successfully uploaded
-        const uploadedFile = {
-          ...audioFile,
-          status: 'Uploaded' as const,
-          progress: 100
-        }
-        setAudioFiles(prev => 
-          prev.map(af => 
-            af.id === audioFile.id ? uploadedFile : af
-          )
-        )
-        uploadedFiles.push(uploadedFile)
-        
-      } catch (error) {
-        console.error('Traditional upload validation error:', error)
-        const errorMessage = error instanceof Error ? error.message : 'File validation failed'
-        
-        // Update file status to error
-        setAudioFiles(prev => 
-          prev.map(af => 
-            af.id === audioFile.id 
-              ? { ...af, status: 'Error', error: errorMessage }
-              : af
-          )
-        )
-      }
-    }
-    
-    return uploadedFiles
-  }
-
-  const uploadFilesBlob = async () => {
-    const uploadedFiles: AudioFile[] = []
-
-    for (const audioFile of audioFiles) {
-      if (audioFile.status === 'Uploaded') continue
-
-      // Update file status to uploading
-      setAudioFiles(prev => 
-        prev.map(af => 
-          af.id === audioFile.id 
-            ? { ...af, status: 'Uploading', progress: 0 }
-            : af
-        )
-      )
-
-      try {
-        console.log(`Uploading file to Blob: ${audioFile.name}`)
-        
-        // Validate file format before attempting upload
-        const validTypes = ['audio/wav', 'audio/mp3', 'audio/flac', 'audio/m4a', 'audio/aac']
-        if (!validTypes.includes(audioFile.file.type) && !audioFile.name.match(/\.(wav|mp3|flac|m4a|aac)$/i)) {
-          throw new Error('Invalid file format. Please upload files in WAV, MP3, FLAC, M4A, or AAC formats only.')
-        }
-        
-        // Validate file size (empty files)
-        if (audioFile.file.size === 0) {
-          throw new Error('File is empty. Please select a valid audio file.')
-        }
-        
-        // First try to get an upload URL from the server
-        // This avoids the client-side token issue
-        const uploadResponse = await fetch('/api/generate-upload-url', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            fileName: audioFile.name,
-            contentType: audioFile.file.type || 'audio/wav',
-            size: audioFile.file.size
-          })
-        })
-
-        if (uploadResponse.ok) {
-          // Use server-provided upload URL
-          const { uploadUrl, publicUrl } = await uploadResponse.json()
-          
-          // Upload directly to the provided URL
-          const uploadResult = await fetch(uploadUrl, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': audioFile.file.type || 'audio/wav',
-            },
-            body: audioFile.file
-          })
-
-          if (!uploadResult.ok) {
-            throw new Error(`Upload failed with status ${uploadResult.status}`)
-          }
-
-          console.log(`Blob upload successful: ${publicUrl}`)
-
-          // Update file status to uploaded
-          const uploadedFile = {
-            ...audioFile,
-            url: publicUrl,
-            status: 'Uploaded' as const,
-            progress: 100
-          }
-          setAudioFiles(prev => 
-            prev.map(af => 
-              af.id === audioFile.id ? uploadedFile : af
-            )
-          )
-          uploadedFiles.push(uploadedFile)
-        } else {
-          // Server upload URL generation failed - get error details
-          const errorData = await uploadResponse.json().catch(() => ({}))
-          const serverError = errorData.error || 'Server upload URL generation failed'
-          throw new Error(serverError)
-        }
-      } catch (error) {
-        console.error('Blob upload error:', error)
-        const errorMessage = error instanceof Error ? error.message : 'Blob upload failed'
-        
-        // Provide more helpful error message with specific guidance
-        let helpfulMessage = errorMessage
-        
-        if (errorMessage.includes('No token found') || errorMessage.includes('BLOB_READ_WRITE_TOKEN')) {
-          helpfulMessage = 'Vercel Blob token not found. Please ensure BLOB_READ_WRITE_TOKEN is configured in your Vercel environment variables, or use Traditional Upload method.'
-        } else if (errorMessage.includes('Failed to retrieve the client token') || errorMessage.includes('authentication failed')) {
-          helpfulMessage = 'Vercel Blob authentication failed. This is a known issue in some Vercel environments. Please use Traditional Upload method instead.'
-        } else if (errorMessage.includes('Invalid') && errorMessage.includes('format')) {
-          helpfulMessage = 'Invalid file format. Please upload files in WAV, MP3, FLAC, M4A, or AAC formats only.'
-        } else {
-          // Generic error - provide helpful guidance
-          const fileSizeMB = Math.round(audioFile.file.size / (1024 * 1024))
-          helpfulMessage = `${errorMessage} For files under 500MB, Traditional Upload is recommended for better reliability.`
-        }
-        
-        // Update file status to error
-        setAudioFiles(prev => 
-          prev.map(af => 
-            af.id === audioFile.id 
-              ? { ...af, status: 'Error', error: helpfulMessage }
-              : af
-          )
-        )
-      }
-    }
-
-    return uploadedFiles
-  }
-
   const uploadFiles = async () => {
     if (audioFiles.length === 0) {
-      onUploadError('Please select at least one audio file')
+      onUploadError('请选择至少一个音频文件')
       return
     }
 
     setIsUploading(true)
+    const uploadedFiles: AudioFile[] = []
 
     try {
-      let uploadedFiles: AudioFile[] = []
+      for (const audioFile of audioFiles) {
+        if (audioFile.status === 'Uploaded') continue
 
-      if (uploadMethod === 'traditional') {
-        uploadedFiles = await uploadFilesTraditional()
-      } else {
-        uploadedFiles = await uploadFilesBlob()
+        // Update file status to uploading
+        setAudioFiles(prev => 
+          prev.map(af => 
+            af.id === audioFile.id 
+              ? { ...af, status: 'Uploading', progress: 0 }
+              : af
+          )
+        )
+
+        try {
+          console.log(`上传文件到Blob: ${audioFile.name}`)
+          
+          // Validate file format before attempting upload
+          const validTypes = ['audio/wav', 'audio/mp3', 'audio/flac', 'audio/m4a', 'audio/aac']
+          if (!validTypes.includes(audioFile.file.type) && !audioFile.name.match(/\.(wav|mp3|flac|m4a|aac)$/i)) {
+            throw new Error('文件格式无效。请上传WAV、MP3、FLAC、M4A或AAC格式的文件。')
+          }
+          
+          // Validate file size (empty files)
+          if (audioFile.file.size === 0) {
+            throw new Error('文件为空。请选择有效的音频文件。')
+          }
+          
+          // First try to get an upload URL from the server
+          // This avoids the client-side token issue
+          const uploadResponse = await fetch('/api/generate-upload-url', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              fileName: audioFile.name,
+              contentType: audioFile.file.type || 'audio/wav',
+              size: audioFile.file.size
+            })
+          })
+
+          if (uploadResponse.ok) {
+            // Use server-provided upload URL
+            const { uploadUrl, publicUrl } = await uploadResponse.json()
+            
+            // Upload directly to the provided URL
+            const uploadResult = await fetch(uploadUrl, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': audioFile.file.type || 'audio/wav',
+              },
+              body: audioFile.file
+            })
+
+            if (!uploadResult.ok) {
+              throw new Error(`上传失败，状态码: ${uploadResult.status}`)
+            }
+
+            console.log(`Blob上传成功: ${publicUrl}`)
+
+            // Update file status to uploaded
+            const uploadedFile = {
+              ...audioFile,
+              url: publicUrl,
+              status: 'Uploaded' as const,
+              progress: 100
+            }
+            setAudioFiles(prev => 
+              prev.map(af => 
+                af.id === audioFile.id ? uploadedFile : af
+              )
+            )
+            uploadedFiles.push(uploadedFile)
+          } else {
+            // Server upload URL generation failed - get error details
+            const errorData = await uploadResponse.json().catch(() => ({}))
+            const serverError = errorData.error || '服务器上传URL生成失败'
+            throw new Error(serverError)
+          }
+        } catch (error) {
+          console.error('Blob上传错误:', error)
+          const errorMessage = error instanceof Error ? error.message : 'Blob上传失败'
+          
+          // Provide more helpful error message with specific guidance
+          let helpfulMessage = errorMessage
+          
+          if (errorMessage.includes('No token found') || errorMessage.includes('BLOB_READ_WRITE_TOKEN')) {
+            helpfulMessage = '未找到Vercel Blob令牌。请确保在Vercel环境变量中配置了BLOB_READ_WRITE_TOKEN。'
+          } else if (errorMessage.includes('Failed to retrieve the client token') || errorMessage.includes('authentication failed')) {
+            helpfulMessage = 'Vercel Blob认证失败。这是Vercel环境中已知的问题。'
+          } else if (errorMessage.includes('Invalid') && errorMessage.includes('format')) {
+            helpfulMessage = '文件格式无效。请上传WAV、MP3、FLAC、M4A或AAC格式的文件。'
+          } else {
+            // Generic error - provide helpful guidance
+            helpfulMessage = `${errorMessage} 请检查您的网络连接并重试。`
+          }
+          
+          // Update file status to error
+          setAudioFiles(prev => 
+            prev.map(af => 
+              af.id === audioFile.id 
+                ? { ...af, status: 'Error', error: helpfulMessage }
+                : af
+            )
+          )
+        }
       }
 
-      const successfulUploads = uploadedFiles.filter(f => f.status === 'Uploaded')
-      
-      if (successfulUploads.length > 0) {
-        onUploadComplete(successfulUploads)
+      if (uploadedFiles.length > 0) {
+        onUploadComplete(uploadedFiles)
       } else {
-        onUploadError('All files failed to upload')
+        onUploadError('所有文件上传失败')
       }
     } catch (error) {
-      console.error('Upload process error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred during upload'
+      console.error('上传过程错误:', error)
+      const errorMessage = error instanceof Error ? error.message : '上传过程中发生错误'
       onUploadError(errorMessage)
     } finally {
       setIsUploading(false)
@@ -281,54 +188,19 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
       <CardHeader>
         <CardTitle className="text-xl md:text-2xl flex items-center gap-2">
           <Upload className="h-6 w-6" />
-          Upload Audio Files
+          上传音频文件
         </CardTitle>
         <CardDescription className="text-sm md:text-base">
-          Select WAV, MP3, FLAC, M4A, or AAC files for processing
+          选择WAV、MP3、FLAC、M4A或AAC文件进行处理（最大5TB/文件）
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Upload Method Selection */}
-        <div className="flex gap-2">
-          <Button
-            variant={uploadMethod === 'traditional' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setUploadMethod('traditional')}
-            className="flex-1"
-          >
-            Traditional Upload
-            <span className="text-xs opacity-70 block">Recommended (under 500MB)</span>
-          </Button>
-          <Button
-            variant={uploadMethod === 'blob' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setUploadMethod('blob')}
-            className="flex-1"
-          >
-            <CloudUpload className="h-4 w-4 mr-1" />
-            Vercel Blob
-            <span className="text-xs opacity-70 block">For files over 500MB</span>
-          </Button>
-        </div>
-
-        {uploadMethod === 'blob' && (
-          <Alert>
-            <AlertDescription>
-              <strong>Vercel Blob Upload Notice:</strong> This method is designed for large files (over 500MB) 
-              but may encounter authentication issues if BLOB_READ_WRITE_TOKEN is not properly configured. 
-              If you see token errors, please switch to Traditional Upload method.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {uploadMethod === 'traditional' && (
-          <Alert>
-            <AlertDescription>
-              <strong>Traditional Upload:</strong> This method works reliably in all environments 
-              and is recommended for files under 500MB. For files larger than 500MB, please use Vercel Blob upload.
-            </AlertDescription>
-          </Alert>
-        )}
+        <Alert>
+          <AlertDescription>
+            <strong>Vercel Blob上传:</strong> 此方法适用于所有文件大小。
+            如果您遇到令牌错误，请确保在Vercel环境变量中正确配置了BLOB_READ_WRITE_TOKEN。
+          </AlertDescription>
+        </Alert>
 
         <div
           className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 md:p-8 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
@@ -336,10 +208,10 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
         >
           <Upload className="mx-auto h-10 w-10 md:h-12 md:w-12 text-muted-foreground mb-3 md:mb-4" />
           <p className="text-base md:text-lg font-medium mb-1 md:mb-2">
-            Drop audio files here or click to select
+            拖拽音频文件到此处或点击选择
           </p>
           <p className="text-xs md:text-sm text-muted-foreground">
-            Supports WAV, MP3, FLAC, M4A, AAC
+            支持WAV、MP3、FLAC、M4A、AAC（最大5TB/文件）
           </p>
           <input
             ref={fileInputRef}
@@ -354,14 +226,14 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
         {audioFiles.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Selected Files:</Label>
+              <Label className="text-sm font-medium">已选择的文件:</Label>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={resetUploads}
                 className="text-xs md:text-sm px-2 py-1 h-auto"
               >
-                Clear All
+                清除所有
               </Button>
             </div>
             <div className="space-y-2 max-h-32 md:max-h-40 overflow-y-auto">
@@ -414,28 +286,31 @@ export default function ReliableUpload({ onUploadComplete, onUploadError }: Reli
             {isUploading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading...
+                上传中...
               </>
             ) : (
-              `Upload Files (${uploadMethod === 'traditional' ? 'Traditional' : 'Vercel Blob'})`
+              '上传文件'
             )}
           </Button>
+          
+          {audioFiles.some(f => f.status === 'Uploaded') && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                const uploadedFiles = audioFiles.filter(f => f.status === 'Uploaded')
+                onUploadComplete(uploadedFiles)
+              }}
+              className="text-sm md:text-base py-2 md:py-3"
+            >
+              处理已上传的文件
+            </Button>
+          )}
         </div>
 
         {audioFiles.some(f => f.status === 'Error') && (
           <Alert variant="destructive">
             <AlertDescription>
-              <strong>Upload Errors Detected:</strong><br />
-              {audioFiles.filter(f => f.status === 'Error').map(f => (
-                <div key={f.id} className="mt-1">
-                  • {f.name}: {f.error}
-                </div>
-              ))}
-              <br />
-              <strong>Solutions:</strong><br />
-              • For token errors: Use Traditional Upload method<br />
-              • For file size errors: Use Vercel Blob upload for files over 500MB<br />
-              • For format errors: Upload only WAV, MP3, FLAC, M4A, or AAC files
+              部分文件上传失败。请检查错误信息并重试。
             </AlertDescription>
           </Alert>
         )}

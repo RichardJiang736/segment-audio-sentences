@@ -17,7 +17,7 @@ export const config = {
       sizeLimit: '500mb',
     },
   },
-  maxBodySize: 500 * 1024 * 1024, // 500MB in bytes
+  maxBodySize: 524288000, // 500MB in bytes
 };
 
 // Function to download file from URL

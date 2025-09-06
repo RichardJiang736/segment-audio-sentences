@@ -185,12 +185,22 @@ async function processUploadedFiles(uploadedFiles: any[], outputFolder: string =
         if (pythonResult.files && pythonResult.files.length > 0) {
           // Add all file results, not just the first one
           for (const fileResult of pythonResult.files) {
+            // Handle the no_segments status
+            let status = fileResult.status || 'Completed'
+            let error = undefined
+            
+            if (status === 'no_segments') {
+              status = 'Error'
+              error = 'No speaker segments detected. The audio may be too short, contain no clear speech, or have quality issues.'
+            }
+            
             results.push({
               id: fileResult.id || fileName.replace(/\.[^/.]+$/, ""),
               name: fileResult.name || fileName,
               segments: fileResult.segments || [],
-              status: fileResult.status || 'Completed',
-              progress: fileResult.progress || 100
+              status: status,
+              progress: fileResult.progress || 100,
+              error: error
             })
           }
         } else {
@@ -283,12 +293,22 @@ async function processFormFiles(audioFiles: File[], outputFolder: string = './ou
         if (pythonResult.files && pythonResult.files.length > 0) {
           // Add all file results, not just the first one
           for (const fileResult of pythonResult.files) {
+            // Handle the no_segments status
+            let status = fileResult.status || 'Completed'
+            let error = undefined
+            
+            if (status === 'no_segments') {
+              status = 'Error'
+              error = 'No speaker segments detected. The audio may be too short, contain no clear speech, or have quality issues.'
+            }
+            
             results.push({
               id: fileResult.id || fileName.replace(/\.[^/.]+$/, ""),
               name: fileResult.name || fileName,
               segments: fileResult.segments || [],
-              status: fileResult.status || 'Completed',
-              progress: fileResult.progress || 100
+              status: status,
+              progress: fileResult.progress || 100,
+              error: error
             })
           }
         } else {

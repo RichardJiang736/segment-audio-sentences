@@ -29,18 +29,25 @@ class StdoutRedirect:
 stdout_redirector = StdoutRedirect()
 
 # INPUTS: passed as command line arguments
-if len(sys.argv) != 3:
-    print("Usage: python main.py <audio_source_directory> <target_directory>")
-    sys.exit(1)
+# Only process command line arguments when run directly, not when imported
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: python main.py <audio_source_directory> <target_directory>")
+        sys.exit(1)
 
-audio_src_dir = sys.argv[1]
-target_root_dir = sys.argv[2]
+    audio_src_dir = sys.argv[1]
+    target_root_dir = sys.argv[2]
+else:
+    # When imported as a module, set default values or None
+    audio_src_dir = None
+    target_root_dir = None
 
-# Validate inputs
-if not os.path.isdir(audio_src_dir):
-    raise FileNotFoundError(f"Source audio directory not found: {audio_src_dir}")
+# Validate inputs (only when run directly)
+if __name__ == "__main__":
+    if not os.path.isdir(audio_src_dir):
+        raise FileNotFoundError(f"Source audio directory not found: {audio_src_dir}")
 
-os.makedirs(target_root_dir, exist_ok=True)
+    os.makedirs(target_root_dir, exist_ok=True)
 
 # Supported audio file extensions
 SUPPORTED_EXTS = (".wav", ".mp3", ".flac", ".m4a", ".aac")
@@ -236,10 +243,12 @@ def main():
     processed_files = []
     total_segments = 0
     
-    for audio_path in iter_audio_files(audio_src_dir, exts=(".wav",)):
-        result = process_audio_file(audio_path, pipeline, target_root_dir)
-        processed_files.append(result)
-        total_segments += len(result["segments"])
+    # Only process files when run directly, not when imported
+    if __name__ == "__main__":
+        for audio_path in iter_audio_files(audio_src_dir, exts=(".wav",)):
+            result = process_audio_file(audio_path, pipeline, target_root_dir)
+            processed_files.append(result)
+            total_segments += len(result["segments"])
     
     print("\n" + "=" * 70)
     print(f"🏁 Done. Files processed: {len(processed_files)} | Total segments: {total_segments}")

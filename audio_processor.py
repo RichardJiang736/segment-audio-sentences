@@ -67,5 +67,12 @@ def run_server(port=10000):
     httpd.serve_forever()
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))
-    run_server(port)
+    # Check if we're being called with command line arguments (for backward compatibility)
+    if len(sys.argv) == 3:
+        # This is for direct command line usage - delegate to main.py
+        from main import main
+        main()
+    else:
+        # This is for running as a service
+        port = int(os.environ.get('PORT', 10000))
+        run_server(port)

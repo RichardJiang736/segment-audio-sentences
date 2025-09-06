@@ -1,3 +1,4 @@
 pyannote.audio
 pydub
 torch
+requests

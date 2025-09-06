@@ -60,12 +60,12 @@ class AudioProcessorHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
-def run_server(port=8000):
+def run_server(port=10000):
     server_address = ('', port)
     httpd = HTTPServer(server_address, AudioProcessorHandler)
     print(f"Audio processor server running on port {port}")
     httpd.serve_forever()
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8000))
+    port = int(os.environ.get('PORT', 10000))
     run_server(port)

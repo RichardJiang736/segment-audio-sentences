@@ -141,7 +141,7 @@ npm run dev
 要将应用部署到 Vercel，您需要配置以下环境变量：
 
 1. `BLOB_READ_WRITE_TOKEN` - Vercel Blob 存储的读写令牌，用于处理大文件上传
-2. `PYTHON_SERVICE_URL` - Python 音频处理服务的 URL（可选，默认为 http://localhost:8000/process）
+2. `PYTHON_SERVICE_URL` - Python 音频处理服务的 URL（可选，默认为 http://localhost:10000/process）
 
 在 Vercel 项目设置中添加这些环境变量以确保应用正常运行。
 

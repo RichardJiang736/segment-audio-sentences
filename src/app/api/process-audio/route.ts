@@ -344,7 +344,7 @@ async function processFormFiles(audioFiles: File[], outputFolder: string = './ou
 }
 
 async function processWithPython(inputPath: string, outputPath: string, fileName: string) {
-  const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000/process';
+  const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:10000/process';
   console.log('调用Python服务:', { pythonServiceUrl, inputPath, outputPath, fileName }); // Debug log
   
   try {

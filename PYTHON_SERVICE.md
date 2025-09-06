@@ -6,7 +6,7 @@ This service handles the audio processing using pyannote.audio for speaker diari
 
 1. Create a new service on Render/Railway/AWS Lambda
 2. Set the following environment variables:
-   - PORT (optional, defaults to 8000)
+   - PORT (optional, defaults to 10000)
 
 3. Use the following build command:
    ```bash

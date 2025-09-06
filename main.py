@@ -184,11 +184,23 @@ def process_audio_file(audio_path, pipeline, target_root_dir):
             print(f"     ❌ Failed to save clip: {e}", file=stdout_redirector)
     
     print(f"✅ Processed {clip_count} segments for {base}", file=stdout_redirector)
+    
+    # Determine status based on whether segments were found
+    if len(file_segments) == 0:
+        # No segments found - could be due to no speech, very short audio, or processing issues
+        status = "no_segments"
+        print(f"⚠️ No speaker segments detected in {base}. This could be due to:", file=stdout_redirector)
+        print("   - Audio too short (less than a few seconds)", file=stdout_redirector)
+        print("   - No clear speech detected", file=stdout_redirector)
+        print("   - Audio quality issues", file=stdout_redirector)
+    else:
+        status = "Completed"
+    
     return {
         "id": base,
         "name": base,
         "segments": file_segments,
-        "status": "Completed",
+        "status": status,
         "progress": 100
     }
 

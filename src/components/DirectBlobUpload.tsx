@@ -118,7 +118,7 @@ export default function DirectBlobUpload({ onUploadComplete, onUploadError }: Di
               setAudioFiles(prev => 
                 prev.map(af => 
                   af.id === audioFile.id 
-                    ? { ...af, progress: Math.round(progress * 100) }
+                    ? { ...af, progress: Math.round(Number(progress) * 100) }
                     : af
                 )
               )

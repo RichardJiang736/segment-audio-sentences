@@ -109,7 +109,7 @@ export default function TestBlobPage() {
               setFiles(prev => 
                 prev.map(f => 
                   f.id === testFile.id 
-                    ? { ...f, progress: Math.round(progress * 100) }
+                    ? { ...f, progress: Math.round(Number(progress) * 100) }
                     : f
                 )
               )

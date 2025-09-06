@@ -20,7 +20,7 @@ interface AudioFile {
   name: string
   file: File
   url?: string
-  status?: 'pending' | 'uploading' | 'uploaded' | 'error'
+  status?: 'Pending' | 'Uploading' | 'Uploaded' | 'Error'
   progress?: number
 }
 

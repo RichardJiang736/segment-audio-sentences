@@ -29,10 +29,6 @@ export default function TestBlobPage() {
 
   // Clean up intervals on unmount
   useEffect(() => {
-    return () => {
-      progressIntervals.current.forEach(interval => clearInterval(interval));
-    };
-  }, []);
     const checkTokenStatus = async () => {
       try {
         const response = await fetch('/api/check-blob-token')
@@ -43,7 +39,12 @@ export default function TestBlobPage() {
         setTokenStatus({ hasToken: false, message: 'Failed to check token status' })
       }
     }
+    
     checkTokenStatus()
+    
+    return () => {
+      progressIntervals.current.forEach(interval => clearInterval(interval));
+    };
   }, [])
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {

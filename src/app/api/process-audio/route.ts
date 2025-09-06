@@ -155,6 +155,7 @@ async function processUploadedFiles(uploadedFiles: any[], outputFolder: string =
       segments: any[]
       status: string
       progress: number
+      error?: string
     }
     const results: ProcessedFileResult[] = []
 
@@ -176,6 +177,11 @@ async function processUploadedFiles(uploadedFiles: any[], outputFolder: string =
         const pythonResult = await processWithPython(outputPath, outputPath, fileName)
         console.log('Python脚本处理结果:', pythonResult); // Debug log
         
+        // Check if Python script returned an error
+        if (pythonResult.error) {
+          throw new Error(`Python processing failed: ${pythonResult.error}`)
+        }
+        
         if (pythonResult.files && pythonResult.files.length > 0) {
           // Add all file results, not just the first one
           for (const fileResult of pythonResult.files) {
@@ -188,24 +194,22 @@ async function processUploadedFiles(uploadedFiles: any[], outputFolder: string =
             })
           }
         } else {
-          // If no segments found, create a basic result
-          results.push({
-            id: fileName.replace(/\.[^/.]+$/, ""),
-            name: fileName,
-            segments: [],
-            status: 'Completed',
-            progress: 100
-          })
+          // If no segments found, this indicates a processing issue
+          console.warn('Python脚本未返回任何文件结果:', fileName); // Debug log
+          throw new Error('Audio processing completed but no segments were generated. The audio file may be too short, corrupted, or in an unsupported format.')
         }
       } catch (error) {
         console.error('Error processing uploaded file:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown processing error'
+        
         // Create a fallback result if processing fails
         results.push({
           id: fileName.replace(/\.[^/.]+$/, ""),
           name: fileName,
           segments: [],
           status: 'Error',
-          progress: 0
+          progress: 0,
+          error: errorMessage
         })
       }
     }
@@ -255,6 +259,7 @@ async function processFormFiles(audioFiles: File[], outputFolder: string = './ou
       segments: any[]
       status: string
       progress: number
+      error?: string
     }
     const results: ProcessedFileResult[] = []
 
@@ -270,6 +275,11 @@ async function processFormFiles(audioFiles: File[], outputFolder: string = './ou
         // Process the audio file with Python script
         const pythonResult = await processWithPython(outputPath, outputPath, fileName)
         
+        // Check if Python script returned an error
+        if (pythonResult.error) {
+          throw new Error(`Python processing failed: ${pythonResult.error}`)
+        }
+        
         if (pythonResult.files && pythonResult.files.length > 0) {
           // Add all file results, not just the first one
           for (const fileResult of pythonResult.files) {
@@ -282,24 +292,22 @@ async function processFormFiles(audioFiles: File[], outputFolder: string = './ou
             })
           }
         } else {
-          // If no segments found, create a basic result
-          results.push({
-            id: fileName.replace(/\.[^/.]+$/, ""),
-            name: fileName,
-            segments: [],
-            status: 'Completed',
-            progress: 100
-          })
+          // If no segments found, this indicates a processing issue
+          console.warn('Python脚本未返回任何文件结果:', fileName); // Debug log
+          throw new Error('Audio processing completed but no segments were generated. The audio file may be too short, corrupted, or in an unsupported format.')
         }
       } catch (pythonError) {
         console.error('Python script error:', pythonError)
+        const errorMessage = pythonError instanceof Error ? pythonError.message : 'Unknown processing error'
+        
         // Create a fallback result if Python script fails
         results.push({
           id: fileName.replace(/\.[^/.]+$/, ""),
           name: fileName,
           segments: [],
           status: 'Error',
-          progress: 0
+          progress: 0,
+          error: errorMessage
         })
       }
     }
@@ -326,12 +334,32 @@ async function processWithPython(inputPath: string, outputPath: string, fileName
       console.log('Python脚本stderr:', stderr); // Debug log
     }
     
+    // Check if stdout is empty or just whitespace
+    if (!stdout || !stdout.trim()) {
+      throw new Error('Python script produced no output. Check if the script executed successfully.')
+    }
+    
     // Parse the JSON output from Python script
-    const result = JSON.parse(stdout)
+    let result
+    try {
+      result = JSON.parse(stdout)
+    } catch (parseError) {
+      console.error('Failed to parse Python script output as JSON:', parseError)
+      console.error('Raw stdout:', stdout)
+      throw new Error(`Python script output is not valid JSON: ${parseError.message}`)
+    }
+    
     console.log('解析后的Python结果:', result); // Debug log
     return result
   } catch (error) {
     console.error('Python脚本执行错误:', error); // Debug log
+    
+    // If it's an execution error, provide more context
+    if (error.code === 'ENOENT') {
+      throw new Error('Python interpreter not found. Please ensure Python is installed and accessible.')
+    }
+    
+    // Re-throw with original message if it's already a formatted error
     throw error
   }
 }

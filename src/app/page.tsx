@@ -41,6 +41,7 @@ interface ProcessedFile {
   progress: number
   yiTranscription?: string
   chineseTranslation?: string
+  error?: string
 }
 
 export default function Home() {
@@ -123,7 +124,8 @@ export default function Home() {
           status: file.status || 'Completed',
           progress: file.progress || 100,
           yiTranscription: '',
-          chineseTranslation: ''
+          chineseTranslation: '',
+          error: file.error || undefined
         }));
         console.log('更新后的文件:', updatedFiles) // Debug log
         setProcessedFiles(prevFiles => {
@@ -153,7 +155,8 @@ export default function Home() {
           status: 'Error',
           progress: 0,
           yiTranscription: pf.yiTranscription || '',
-          chineseTranslation: pf.chineseTranslation || ''
+          chineseTranslation: pf.chineseTranslation || '',
+          error: errorMessage
         }))
       );
     } finally {
@@ -394,7 +397,18 @@ export default function Home() {
         )}
         {processedFiles.some(pf => pf.status === 'Error') && !error && (
           <Alert variant="destructive">
-            <AlertDescription>处理音频文件时发生错误。请检查文件格式和大小，然后重试。</AlertDescription>
+            <AlertDescription>
+              {(() => {
+                const errorFiles = processedFiles.filter(pf => pf.status === 'Error')
+                if (errorFiles.length === 1 && errorFiles[0].error) {
+                  return `处理 ${errorFiles[0].name} 时发生错误: ${errorFiles[0].error}`
+                }
+                if (errorFiles.some(ef => ef.error)) {
+                  return '处理音频文件时发生错误，详情请查看下方文件状态。'
+                }
+                return '处理音频文件时发生错误。请检查文件格式和大小，然后重试。'
+              })()}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -430,11 +444,21 @@ export default function Home() {
                         audioUrl={`/api/audio/${pf.id}?type=original`}
                       />
                     ) : (
-                      <p className="text-muted-foreground text-sm">
-                        {pf.status === 'Pending' ? '等待处理...' : 
-                         pf.status === 'Processing' ? '处理中...' : 
-                         '此音频文件中未检测到说话人片段。'}
-                      </p>
+                      <div className="text-muted-foreground text-sm space-y-2">
+                        <p>
+                          {pf.status === 'Pending' ? '等待处理...' : 
+                           pf.status === 'Processing' ? '处理中...' : 
+                           pf.status === 'Error' ? '处理失败' :
+                           '此音频文件中未检测到说话人片段。'}
+                        </p>
+                        {pf.status === 'Error' && pf.error && (
+                          <Alert variant="destructive">
+                            <AlertDescription className="text-sm">
+                              <strong>错误详情:</strong> {pf.error}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
                     )}
                     
                     {/* Text Input Sections */}

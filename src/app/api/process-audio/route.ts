@@ -316,22 +316,33 @@ async function processFormFiles(audioFiles: File[], outputFolder: string = './ou
 }
 
 async function processWithPython(inputPath: string, outputPath: string, fileName: string) {
-  const pythonScriptPath = join(process.cwd(), 'main.py')
-  console.log('执行Python脚本:', { pythonScriptPath, inputPath, outputPath, fileName }); // Debug log
+  const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000/process';
+  console.log('调用Python服务:', { pythonServiceUrl, inputPath, outputPath, fileName }); // Debug log
   
   try {
-    const { stdout, stderr } = await execAsync(`python ${pythonScriptPath} "${inputPath}" "${outputPath}"`)
-    console.log('Python脚本执行完成，stdout:', stdout); // Debug log
-    if (stderr) {
-      console.log('Python脚本stderr:', stderr); // Debug log
+    // For this to work, you'll need to:
+    // 1. Deploy your Python service separately
+    // 2. Set PYTHON_SERVICE_URL environment variable in Vercel
+    const response = await fetch(pythonServiceUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        audio_src_dir: inputPath,
+        target_root_dir: outputPath
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Python service error: ${response.status} ${response.statusText}`);
     }
     
-    // Parse the JSON output from Python script
-    const result = JSON.parse(stdout)
-    console.log('解析后的Python结果:', result); // Debug log
-    return result
+    const result = await response.json();
+    console.log('Python服务返回结果:', result); // Debug log
+    return result;
   } catch (error) {
-    console.error('Python脚本执行错误:', error); // Debug log
-    throw error
+    console.error('调用Python服务错误:', error); // Debug log
+    throw error;
   }
 }

@@ -65,6 +65,58 @@
 - **数据库**：Prisma, SQLite
 - **AI模型**：PyAnnote.audio
 
+### 架构图
+
+下面是应用程序各模块之间的通信关系图：
+
+```mermaid
+graph TD
+    A[User] --> B[Next.js Frontend]
+    B --> C[Vercel Blob Storage]
+    B --> D[API Routes]
+    D --> E[Python Audio Processing Service]
+    E --> F[PyAnnote.audio]
+    E --> G[PyDub]
+    E --> H[Torch]
+    D --> I[Vercel Serverless Functions]
+    B --> J[Socket.IO Client]
+    K[Socket.IO Server] --> B
+    E --> K
+    C --> L[Uploaded Audio Files]
+    E --> M[Processed Audio Segments]
+    M --> N[Public Output Directory]
+    N --> B
+
+    style A fill:#f9f,stroke:#333
+    style B fill:#bbf,stroke:#333
+    style C fill:#bfb,stroke:#333
+    style D fill:#fbb,stroke:#333
+    style E fill:#f9f,stroke:#333
+    style F fill:#ffb,stroke:#333
+    style G fill:#ffb,stroke:#333
+    style H fill:#ffb,stroke:#333
+    style I fill:#fbb,stroke:#333
+    style J fill:#bfb,stroke:#333
+    style K fill:#bfb,stroke:#333
+    style L fill:#ffb,stroke:#333
+    style M fill:#ffb,stroke:#333
+    style N fill:#bfb,stroke:#333
+
+    linkStyle 0 stroke:#333,stroke-width:2px;
+    linkStyle 1 stroke:#333,stroke-width:2px;
+    linkStyle 2 stroke:#333,stroke-width:2px;
+    linkStyle 3 stroke:#333,stroke-width:2px;
+    linkStyle 4 stroke:#333,stroke-width:2px;
+    linkStyle 5 stroke:#333,stroke-width:2px;
+    linkStyle 6 stroke:#333,stroke-width:2px;
+    linkStyle 7 stroke:#333,stroke-width:2px;
+    linkStyle 8 stroke:#333,stroke-width:2px;
+    linkStyle 9 stroke:#333,stroke-width:2px;
+    linkStyle 10 stroke:#333,stroke-width:2px;
+    linkStyle 11 stroke:#333,stroke-width:2px;
+    linkStyle 12 stroke:#333,stroke-width:2px;
+```
+
 * **项目链接**
 
   * 🌐 Web 应用：[diarisator-ai.vercel.app](https://diarisator-ai.vercel.app)
@@ -89,8 +141,12 @@ npm run dev
 要将应用部署到 Vercel，您需要配置以下环境变量：
 
 1. `BLOB_READ_WRITE_TOKEN` - Vercel Blob 存储的读写令牌，用于处理大文件上传
+2. `PYTHON_SERVICE_URL` - Python 音频处理服务的 URL（可选，默认为 http://localhost:8000/process）
 
 在 Vercel 项目设置中添加这些环境变量以确保应用正常运行。
+
+注意：由于 Vercel 不支持 Python 运行时，音频处理部分需要部署到单独的服务上。
+请参考 PYTHON_SERVICE.md 了解如何部署 Python 服务。
 
 ## 🌿 致谢
 
